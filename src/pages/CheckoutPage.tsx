@@ -99,7 +99,7 @@ export default function CheckoutPage() {
       delivery_fee: deliveryFee,
       tax_amount: tax,
       total,
-      currency: 'USD',
+      currency: 'RWF',
       coupon_id: coupon?.id ?? null,
       delivery_method_id: selectedDelivery.id,
       shipping_address: selectedAddress,
@@ -275,7 +275,7 @@ export default function CheckoutPage() {
                                 )}
                               </div>
                               <p className="delivery-option-price">
-                                {fee === 0 ? <span style={{ color: 'var(--emerald-600)' }}>Free</span> : formatCurrency(fee, 'USD')}
+                                {fee === 0 ? <span style={{ color: 'var(--emerald-600)' }}>Free</span> : formatCurrency(fee, 'RWF')}
                               </p>
                             </div>
                           );
@@ -305,7 +305,7 @@ export default function CheckoutPage() {
                           <div style={{ flex: 1 }}>
                             <p style={{ fontWeight: 'var(--font-semibold)', fontSize: 'var(--text-sm)' }}>{coupon.code} applied</p>
                             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--emerald-700)' }}>
-                              Saving {formatCurrency(discountAmount, 'USD')}
+                              Saving {formatCurrency(discountAmount, 'RWF')}
                             </p>
                           </div>
                           <button className="btn btn-ghost btn-sm" onClick={() => setCoupon(null)}>Remove</button>
@@ -377,7 +377,7 @@ export default function CheckoutPage() {
                     <div className="checkout-panel-footer">
                       <button className="btn btn-ghost" onClick={() => setStep(3)}><ArrowLeft size={16} /> Back</button>
                       <button className="btn btn-primary btn-lg" onClick={placeOrder} disabled={placing}>
-                        {placing ? 'Placing order…' : `Place Order · ${formatCurrency(total, 'USD')}`}
+                        {placing ? 'Placing order…' : `Place Order · ${formatCurrency(total, 'RWF')}`}
                       </button>
                     </div>
                   </div>
@@ -398,19 +398,19 @@ export default function CheckoutPage() {
                           <p className="checkout-summary-qty">× {item.quantity}</p>
                         </div>
                         <p className="checkout-summary-price">
-                          {formatCurrency(getEffectivePrice(item.product!) * item.quantity, item.product?.currency ?? 'USD')}
+                          {formatCurrency(getEffectivePrice(item.product!) * item.quantity, item.product?.currency ?? 'RWF')}
                         </p>
                       </div>
                     );
                   })}
                 </div>
                 <div className="checkout-summary-totals">
-                  <div className="checkout-totals-row"><span>Subtotal</span><span>{formatCurrency(subtotal, 'USD')}</span></div>
-                  <div className="checkout-totals-row"><span>Delivery</span><span>{deliveryFee === 0 ? <span style={{ color: 'var(--emerald-600)' }}>Free</span> : formatCurrency(deliveryFee, 'USD')}</span></div>
-                  {discountAmount > 0 && <div className="checkout-totals-row" style={{ color: 'var(--emerald-600)' }}><span>Discount</span><span>−{formatCurrency(discountAmount, 'USD')}</span></div>}
-                  <div className="checkout-totals-row"><span>Tax (10%)</span><span>{formatCurrency(tax, 'USD')}</span></div>
+                  <div className="checkout-totals-row"><span>Subtotal</span><span>{formatCurrency(subtotal, 'RWF')}</span></div>
+                  <div className="checkout-totals-row"><span>Delivery</span><span>{deliveryFee === 0 ? <span style={{ color: 'var(--emerald-600)' }}>Free</span> : formatCurrency(deliveryFee, 'RWF')}</span></div>
+                  {discountAmount > 0 && <div className="checkout-totals-row" style={{ color: 'var(--emerald-600)' }}><span>Discount</span><span>−{formatCurrency(discountAmount, 'RWF')}</span></div>}
+                  <div className="checkout-totals-row"><span>Tax (10%)</span><span>{formatCurrency(tax, 'RWF')}</span></div>
                   <hr className="checkout-totals-divider" />
-                  <div className="checkout-totals-row total"><span>Total</span><span>{formatCurrency(total, 'USD')}</span></div>
+                  <div className="checkout-totals-row total"><span>Total</span><span>{formatCurrency(total, 'RWF')}</span></div>
                 </div>
               </div>
             </div>

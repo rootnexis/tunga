@@ -3,6 +3,7 @@ import { MapPin, Plus, Pencil, Trash2, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmModal } from '@/components/shared/ConfirmModal';
@@ -15,6 +16,8 @@ const BLANK: Partial<Address> = {
 
 export default function AccountAddressesPage() {
   const { user } = useAuth();
+  const { t } = useT();
+  const ap = t.account.addressesPage;
   const { success, error: toastError } = useToast();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,12 +48,12 @@ export default function AccountAddressesPage() {
     setSaving(true);
     if (editing) {
       const { error } = await supabase.from('addresses').update(form).eq('id', editing.id);
-      if (error) { toastError('Could not save', error.message); setSaving(false); return; }
-      success('Address updated');
+      if (error) { toastError(ap.couldNotSave, error.message); setSaving(false); return; }
+      success(ap.addressUpdated);
     } else {
       const { error } = await supabase.from('addresses').insert({ ...form, user_id: user.id });
-      if (error) { toastError('Could not save', error.message); setSaving(false); return; }
-      success('Address added');
+      if (error) { toastError(ap.couldNotSave, error.message); setSaving(false); return; }
+      success(ap.addressAdded);
     }
     setSaving(false);
     setShowForm(false);
@@ -61,25 +64,25 @@ export default function AccountAddressesPage() {
     if (!deleting) return;
     await supabase.from('addresses').delete().eq('id', deleting.id);
     setDeleting(null);
-    success('Address deleted');
+    success(ap.addressDeleted);
     load();
   };
 
   const setDefault = async (a: Address) => {
     await supabase.from('addresses').update({ is_default: false }).eq('user_id', user!.id);
     await supabase.from('addresses').update({ is_default: true }).eq('id', a.id);
-    success('Default address updated');
+    success(ap.defaultUpdated);
     load();
   };
 
   return (
     <>
-      <PageSeo title="My Addresses" />
+      <PageSeo title={`${ap.title} — ${t.siteName}`} />
       <div className="account-card">
         <div className="account-card-header">
-          <h1 className="account-card-title">Saved Addresses</h1>
+          <h1 className="account-card-title">{ap.title}</h1>
           <button className="btn btn-primary btn-sm" onClick={openNew}>
-            <Plus size={14} /> Add Address
+            <Plus size={14} /> {ap.addAddress}
           </button>
         </div>
 
@@ -87,64 +90,68 @@ export default function AccountAddressesPage() {
         {showForm && (
           <div style={{ borderBottom: '1px solid var(--color-border)', padding: 'var(--space-6)', background: 'var(--slate-50)' }}>
             <h2 style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-5)' }}>
-              {editing ? 'Edit Address' : 'New Address'}
+              {editing ? ap.editAddress : ap.newAddress}
             </h2>
             <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               <div className="auth-row">
                 <div className="form-group">
-                  <label className="form-label">Label <span className="form-label-optional">(optional)</span></label>
-                  <input type="text" className="input" value={form.label ?? ''} onChange={set('label')} placeholder="Home, Work…" />
+                  <label className="form-label">{ap.label} <span className="form-label-optional">({ap.optional})</span></label>
+                  <input type="text" className="input" value={form.label ?? ''} onChange={set('label')} placeholder={ap.labelPlaceholder} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Phone</label>
+                  <label className="form-label">{ap.phone}</label>
                   <input type="tel" className="input" value={form.phone ?? ''} onChange={set('phone')} />
                 </div>
               </div>
               <div className="auth-row">
                 <div className="form-group">
-                  <label className="form-label">First Name *</label>
+                  <label className="form-label">{ap.firstName}</label>
                   <input type="text" className="input" value={form.first_name ?? ''} onChange={set('first_name')} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Last Name *</label>
+                  <label className="form-label">{ap.lastName}</label>
                   <input type="text" className="input" value={form.last_name ?? ''} onChange={set('last_name')} required />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Address Line 1 *</label>
+                <label className="form-label">{ap.addressLine1}</label>
                 <input type="text" className="input" value={form.address_line1 ?? ''} onChange={set('address_line1')} required />
               </div>
               <div className="form-group">
-                <label className="form-label">Address Line 2 <span className="form-label-optional">(optional)</span></label>
+                <label className="form-label">{ap.addressLine2} <span className="form-label-optional">({ap.optional})</span></label>
                 <input type="text" className="input" value={form.address_line2 ?? ''} onChange={set('address_line2')} />
               </div>
               <div className="auth-row">
                 <div className="form-group">
-                  <label className="form-label">City *</label>
+                  <label className="form-label">{ap.city}</label>
                   <input type="text" className="input" value={form.city ?? ''} onChange={set('city')} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">State / Province</label>
+                  <label className="form-label">{ap.state}</label>
                   <input type="text" className="input" value={form.state ?? ''} onChange={set('state')} />
                 </div>
               </div>
               <div className="auth-row">
                 <div className="form-group">
-                  <label className="form-label">Postal Code</label>
+                  <label className="form-label">{ap.postalCode}</label>
                   <input type="text" className="input" value={form.postal_code ?? ''} onChange={set('postal_code')} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Country *</label>
+                  <label className="form-label">{ap.country}</label>
                   <input type="text" className="input" value={form.country ?? ''} onChange={set('country')} required />
                 </div>
               </div>
               <label className="checkbox-group">
                 <input type="checkbox" checked={!!form.is_default} onChange={e => setForm(p => ({ ...p, is_default: e.target.checked }))} />
-                <span>Set as default address</span>
+                <span>{ap.setAsDefault}</span>
               </label>
               <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save Address'}</button>
-                <button type="button" className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? ap.saving : ap.saveAddress}
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={() => setShowForm(false)}>
+                  {ap.cancel}
+                </button>
               </div>
             </form>
           </div>
@@ -152,9 +159,18 @@ export default function AccountAddressesPage() {
 
         <div className="account-card-body">
           {isLoading ? (
-            <p style={{ color: 'var(--color-text-tertiary)', textAlign: 'center' }}>Loading…</p>
+            <p style={{ color: 'var(--color-text-tertiary)', textAlign: 'center' }}>{ap.loading}</p>
           ) : addresses.length === 0 && !showForm ? (
-            <EmptyState icon={MapPin} title="No saved addresses" description="Add an address to speed up checkout." action={<button className="btn btn-primary" onClick={openNew}><Plus size={14} /> Add Address</button>} />
+            <EmptyState
+              icon={MapPin}
+              title={ap.noAddresses}
+              description={ap.noAddressesDesc}
+              action={
+                <button className="btn btn-primary" onClick={openNew}>
+                  <Plus size={14} /> {ap.addAddress}
+                </button>
+              }
+            />
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 'var(--space-4)' }}>
               {addresses.map(addr => (
@@ -162,11 +178,11 @@ export default function AccountAddressesPage() {
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
                     <div>
                       {addr.label && <p className="address-card-label">{addr.label}</p>}
-                      {addr.is_default && <span className="badge badge-primary badge-sm">Default</span>}
+                      {addr.is_default && <span className="badge badge-primary badge-sm">{ap.defaultBadge}</span>}
                     </div>
                     <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-                      <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(addr)} aria-label="Edit"><Pencil size={13} /></button>
-                      <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setDeleting(addr)} aria-label="Delete" style={{ color: 'var(--red-500)' }}><Trash2 size={13} /></button>
+                      <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(addr)} aria-label={ap.edit}><Pencil size={13} /></button>
+                      <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setDeleting(addr)} aria-label={ap.delete} style={{ color: 'var(--red-500)' }}><Trash2 size={13} /></button>
                     </div>
                   </div>
                   <p className="address-card-name">{addr.first_name} {addr.last_name}</p>
@@ -177,7 +193,7 @@ export default function AccountAddressesPage() {
                   </p>
                   {!addr.is_default && (
                     <button className="btn btn-ghost btn-sm" onClick={() => setDefault(addr)}>
-                      <Check size={13} /> Set as Default
+                      <Check size={13} /> {ap.setDefault}
                     </button>
                   )}
                 </div>
@@ -191,9 +207,9 @@ export default function AccountAddressesPage() {
         isOpen={!!deleting}
         onClose={() => setDeleting(null)}
         onConfirm={handleDelete}
-        title="Delete Address"
-        message="Are you sure you want to delete this address? This cannot be undone."
-        confirmLabel="Delete"
+        title={ap.deleteConfirmTitle}
+        message={ap.deleteConfirmDesc}
+        confirmLabel={ap.delete}
       />
     </>
   );

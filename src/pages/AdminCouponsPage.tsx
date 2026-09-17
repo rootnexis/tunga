@@ -355,7 +355,7 @@ export default function AdminCouponsPage() {
 
   const formatValue = (c: Coupon) => {
     if (c.type === 'percentage')    return `${c.value}%`;
-    if (c.type === 'fixed')         return formatCurrency(c.value, 'USD');
+    if (c.type === 'fixed')         return formatCurrency(c.value, 'RWF');
     return 'Free shipping';
   };
 
@@ -440,7 +440,7 @@ export default function AdminCouponsPage() {
                       </p>
                     </td>
                     <td style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)' }}>
-                      {c.min_order_amount ? formatCurrency(c.min_order_amount, 'USD') : '—'}
+                      {c.min_order_amount ? formatCurrency(c.min_order_amount, 'RWF') : '—'}
                     </td>
                     <td style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
                       {c.used_count}

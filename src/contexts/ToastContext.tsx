@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { cn } from '@/utils/formatters';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { localizeToastText } from '@/utils/localizedErrors';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -30,6 +32,7 @@ const ICONS: Record<ToastType, React.FC<{ size?: number }>> = {
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const { lang } = useLanguage();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -42,11 +45,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const addToast = useCallback((type: ToastType, title: string, message?: string, duration = 4500) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    setToasts(prev => [...prev.slice(-4), { id, type, title, message, duration }]);
+    const localizedTitle = localizeToastText(title, lang) || title;
+    const localizedMsg = localizeToastText(message, lang) || message;
+
+    setToasts(prev => [...prev.slice(-4), { id, type, title: localizedTitle, message: localizedMsg, duration }]);
 
     const timer = setTimeout(() => dismiss(id), duration);
     timers.current.set(id, timer);
-  }, [dismiss]);
+  }, [dismiss, lang]);
 
   const value: ToastContextValue = {
     success: (title, msg) => addToast('success', title, msg),

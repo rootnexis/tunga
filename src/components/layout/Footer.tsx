@@ -95,9 +95,9 @@ export function Footer() {
             </p>
             {/* Contact */}
             <div className="footer-contact-list">
-              <a href="mailto:hello@storefront.com" className="footer-contact-item">
+              <a href="mailto:hello@tunga.com" className="footer-contact-item">
                 <Mail size={14} />
-                hello@storefront.com
+                hello@tunga.com
               </a>
               <a href="tel:+15551234567" className="footer-contact-item">
                 <Phone size={14} />

@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
 import { CartDrawer } from '@/features/cart/CartDrawer';
+import { ChatWidget } from '@/components/chat/ChatWidget';
 
 export function CustomerLayout() {
   return (
@@ -13,6 +14,7 @@ export function CustomerLayout() {
       </main>
       <Footer />
       <CartDrawer />
+      <ChatWidget />
     </div>
   );
 }

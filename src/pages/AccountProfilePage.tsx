@@ -3,10 +3,13 @@ import { Eye, EyeOff, Camera } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
 
 export default function AccountProfilePage() {
   const { profile, refreshProfile } = useAuth();
+  const { t } = useT();
+  const pp = t.account.profilePage;
   const { success, error: toastError } = useToast();
 
   const [form, setForm]     = useState({ first_name: '', last_name: '', phone: '' });
@@ -31,31 +34,31 @@ export default function AccountProfilePage() {
     setSaving(true);
     const { error } = await supabase.from('profiles').update(form).eq('id', profile.id);
     setSaving(false);
-    if (error) { toastError('Could not save', error.message); return; }
+    if (error) { toastError(pp.couldNotSave, error.message); return; }
     await refreshProfile();
-    success('Profile updated');
+    success(pp.profileUpdated);
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (passForm.next !== passForm.confirm) { toastError('Passwords do not match'); return; }
-    if (passForm.next.length < 8) { toastError('Password too short', 'Must be at least 8 characters'); return; }
+    if (passForm.next !== passForm.confirm) { toastError(pp.passwordsDoNotMatch); return; }
+    if (passForm.next.length < 8) { toastError(pp.passwordTooShort, pp.passwordMin8); return; }
     setPassSaving(true);
     const { error } = await supabase.auth.updateUser({ password: passForm.next });
     setPassSaving(false);
-    if (error) { toastError('Could not update password', error.message); return; }
-    success('Password changed');
+    if (error) { toastError(pp.couldNotUpdatePassword, error.message); return; }
+    success(pp.passwordChanged);
     setPassForm({ current: '', next: '', confirm: '' });
   };
 
   return (
     <>
-      <PageSeo title="Profile & Settings" />
+      <PageSeo title={`${pp.title} — ${t.siteName}`} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
 
         {/* Profile Info */}
         <div className="account-card">
-          <div className="account-card-header"><h1 className="account-card-title">Profile Information</h1></div>
+          <div className="account-card-header"><h1 className="account-card-title">{pp.title}</h1></div>
           <div className="account-card-body">
             {/* Avatar */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-5)', marginBottom: 'var(--space-6)' }}>
@@ -76,20 +79,20 @@ export default function AccountProfilePage() {
             <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: 480 }}>
               <div className="auth-row">
                 <div className="form-group">
-                  <label className="form-label" htmlFor="prof-first">First Name</label>
+                  <label className="form-label" htmlFor="prof-first">{pp.firstName}</label>
                   <input id="prof-first" type="text" className="input" value={form.first_name} onChange={setF('first_name')} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label" htmlFor="prof-last">Last Name</label>
+                  <label className="form-label" htmlFor="prof-last">{pp.lastName}</label>
                   <input id="prof-last" type="text" className="input" value={form.last_name} onChange={setF('last_name')} />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label" htmlFor="prof-phone">Phone</label>
+                <label className="form-label" htmlFor="prof-phone">{pp.phone}</label>
                 <input id="prof-phone" type="tel" className="input" value={form.phone} onChange={setF('phone')} placeholder="+1 555 000 0000" />
               </div>
               <button type="submit" className="btn btn-primary" disabled={saving} style={{ alignSelf: 'flex-start' }}>
-                {saving ? 'Saving…' : 'Save Changes'}
+                {saving ? pp.saving : pp.saveChanges}
               </button>
             </form>
           </div>
@@ -97,12 +100,12 @@ export default function AccountProfilePage() {
 
         {/* Change Password */}
         <div className="account-card">
-          <div className="account-card-header"><h2 className="account-card-title">Change Password</h2></div>
+          <div className="account-card-header"><h2 className="account-card-title">{pp.changePassword}</h2></div>
           <div className="account-card-body">
             <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: 480 }}>
               {[
-                { id: 'cp-new', label: 'New Password', key: 'next' as const, ph: 'Min. 8 characters' },
-                { id: 'cp-confirm', label: 'Confirm Password', key: 'confirm' as const, ph: 'Repeat new password' },
+                { id: 'cp-new', label: pp.newPassword, key: 'next' as const, ph: pp.min8Chars },
+                { id: 'cp-confirm', label: pp.confirmPassword, key: 'confirm' as const, ph: pp.repeatNewPassword },
               ].map(({ id, label, key, ph }) => (
                 <div key={id} className="form-group">
                   <label className="form-label" htmlFor={id}>{label}</label>
@@ -115,7 +118,7 @@ export default function AccountProfilePage() {
                 </div>
               ))}
               <button type="submit" className="btn btn-primary" disabled={passSaving} style={{ alignSelf: 'flex-start' }}>
-                {passSaving ? 'Updating…' : 'Change Password'}
+                {passSaving ? pp.updating : pp.changePassword}
               </button>
             </form>
           </div>

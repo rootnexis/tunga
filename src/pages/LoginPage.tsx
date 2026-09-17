@@ -22,9 +22,9 @@ export default function LoginPage() {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!email.trim()) e.email = `${t.auth.emailAddress} is required`;
-    else if (!/\S+@\S+\.\S+/.test(email)) e.email = 'Enter a valid email';
-    if (!password) e.password = `${t.auth.password} is required`;
+    if (!email.trim()) e.email = t.auth.emailRequired || `${t.auth.emailAddress} is required`;
+    else if (!/\S+@\S+\.\S+/.test(email)) e.email = t.auth.validEmailRequired || 'Enter a valid email';
+    if (!password) e.password = t.auth.passwordRequired || `${t.auth.password} is required`;
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -36,10 +36,13 @@ export default function LoginPage() {
     const { error } = await signIn(email, password);
     setIsLoading(false);
     if (error) {
-      toastError('Sign in failed', error);
+      const errorMsg = error === 'Invalid login credentials'
+        ? (t.auth.invalidCredentials || error)
+        : error;
+      toastError(t.auth.signInFailed || 'Sign in failed', errorMsg);
       return;
     }
-    success(t.auth.welcomeBack, 'You are now signed in.');
+    success(t.auth.welcomeBack, t.auth.signedInSuccess || 'You are now signed in.');
     navigate(from, { replace: true });
   };
 

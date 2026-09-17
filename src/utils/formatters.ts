@@ -1,7 +1,7 @@
 import type { OrderStatus, PaymentStatus, TicketStatus } from '@/types';
 
 // ── Currency formatting ──
-export function formatCurrency(amount: number, currency = 'USD'): string {
+export function formatCurrency(amount: number, currency = 'RWF'): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,

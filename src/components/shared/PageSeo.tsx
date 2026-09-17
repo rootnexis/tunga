@@ -7,7 +7,7 @@ interface Props {
 
 export function PageSeo({ title, description }: Props) {
   useEffect(() => {
-    const siteName = 'Storefront';
+    const siteName = 'Tunga';
     document.title = title.includes(siteName) ? title : `${title} — ${siteName}`;
     if (description) {
       let meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');

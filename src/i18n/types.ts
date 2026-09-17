@@ -114,6 +114,13 @@ export interface Translations {
     backToLogin: string;
     verifyEmail: string;
     verifyEmailDesc: string;
+    signInFailed: string;
+    invalidCredentials: string;
+    registrationFailed: string;
+    signedInSuccess: string;
+    emailRequired: string;
+    validEmailRequired: string;
+    passwordRequired: string;
   };
   // Account
   account: {
@@ -130,6 +137,122 @@ export interface Translations {
     noOrdersDesc: string;
     savedItems: string;
     savedAddresses: string;
+    dashboardPage: {
+      welcomeBack: string;
+      welcomeDesc: string;
+      myOrders: string;
+      myOrdersDesc: string;
+      wishlist: string;
+      wishlistDesc: string;
+      addresses: string;
+      addressesDesc: string;
+      keepShopping: string;
+      keepShoppingDesc: string;
+      recentOrders: string;
+      viewAll: string;
+      noOrders: string;
+      startShopping: string;
+      order: string;
+      date: string;
+      status: string;
+      total: string;
+      loadingOrders: string;
+    };
+    supportPage: {
+      title: string;
+      newTicket: string;
+      subject: string;
+      subjectPlaceholder: string;
+      category: string;
+      categories: {
+        orderIssue: string;
+        productQuestion: string;
+        returnRefund: string;
+        payment: string;
+        shipping: string;
+        other: string;
+      };
+      message: string;
+      messagePlaceholder: string;
+      submitTicket: string;
+      submitting: string;
+      cancel: string;
+      noTickets: string;
+      noTicketsDesc: string;
+      openTicket: string;
+      ticketSubmitted: string;
+      ticketSubmittedDesc: string;
+      colSubject: string;
+      colCategory: string;
+      colStatus: string;
+      colLastUpdated: string;
+      loading: string;
+    };
+    profilePage: {
+      title: string;
+      firstName: string;
+      lastName: string;
+      phone: string;
+      saveChanges: string;
+      saving: string;
+      changePassword: string;
+      newPassword: string;
+      min8Chars: string;
+      confirmPassword: string;
+      repeatNewPassword: string;
+      updating: string;
+      profileUpdated: string;
+      passwordChanged: string;
+      passwordsDoNotMatch: string;
+      passwordTooShort: string;
+      passwordMin8: string;
+      couldNotSave: string;
+      couldNotUpdatePassword: string;
+    };
+    notificationsPage: {
+      title: string;
+      markAllRead: string;
+      noNotifications: string;
+      noNotificationsDesc: string;
+      loading: string;
+    };
+    addressesPage: {
+      title: string;
+      addAddress: string;
+      newAddress: string;
+      editAddress: string;
+      label: string;
+      optional: string;
+      labelPlaceholder: string;
+      phone: string;
+      firstName: string;
+      lastName: string;
+      addressLine1: string;
+      addressLine2: string;
+      city: string;
+      state: string;
+      postalCode: string;
+      country: string;
+      selectCountry: string;
+      setAsDefault: string;
+      saveAddress: string;
+      saving: string;
+      cancel: string;
+      defaultBadge: string;
+      setDefault: string;
+      edit: string;
+      delete: string;
+      noAddresses: string;
+      noAddressesDesc: string;
+      deleteConfirmTitle: string;
+      deleteConfirmDesc: string;
+      addressAdded: string;
+      addressUpdated: string;
+      addressDeleted: string;
+      defaultUpdated: string;
+      couldNotSave: string;
+      loading: string;
+    };
   };
   // Cart
   cart: {
@@ -315,5 +438,171 @@ export interface Translations {
     s6Title: string;
     s6Content: string;
     supportCenter: string;
+  };
+  // Chatbot Tunga AI
+  chatbot: {
+    title: string;
+    subtitle: string;
+    welcomePill: string;
+    welcomeMessage: string;
+    placeholder: string;
+    poweredBy: string;
+    quickActions: {
+      popularProducts: string;
+      popularProductsQuery: string;
+      trackOrders: string;
+      trackOrdersQuery: string;
+      shipping: string;
+      shippingQuery: string;
+      deals: string;
+      dealsQuery: string;
+    };
+    viewProduct: string;
+    trackOrder: string;
+    orderTotal: string;
+    restartChat: string;
+    closeChat: string;
+    errorMessage: string;
+  };
+  // Admin Panel
+  admin: {
+    nav: {
+      dashboard: string;
+      products: string;
+      inventory: string;
+      orders: string;
+      reviews: string;
+      customers: string;
+      coupons: string;
+      delivery: string;
+      signOut: string;
+      storefront: string;
+    };
+    products: {
+      title: string;
+      totalProducts: string;
+      addProduct: string;
+      searchPlaceholder: string;
+      colProduct: string;
+      colSku: string;
+      colCategory: string;
+      colPrice: string;
+      colStock: string;
+      colStatus: string;
+      featured: string;
+      active: string;
+      draft: string;
+      archived: string;
+      outOfStock: string;
+      lowStock: string;
+      noProducts: string;
+      noProductsDesc: string;
+      archiveProduct: string;
+      restoreProduct: string;
+      archiveConfirm: string;
+      restoreConfirm: string;
+      productArchived: string;
+      productRestored: string;
+      view: string;
+      edit: string;
+      archive: string;
+      restore: string;
+    };
+    productForm: {
+      newProduct: string;
+      editProduct: string;
+      editing: string;
+      fillDetails: string;
+      cancel: string;
+      saveChanges: string;
+      createProduct: string;
+      saving: string;
+      // Basic info
+      basicInfo: string;
+      productName: string;
+      productNamePlaceholder: string;
+      slug: string;
+      slugPlaceholder: string;
+      urlPreview: string;
+      sku: string;
+      skuPlaceholder: string;
+      shortDescription: string;
+      shortDescPlaceholder: string;
+      fullDescription: string;
+      fullDescPlaceholder: string;
+      tags: string;
+      tagsHint: string;
+      tagsPlaceholder: string;
+      // Pricing
+      pricing: string;
+      basePrice: string;
+      salePrice: string;
+      salePriceOptional: string;
+      currency: string;
+      salePriceWarning: string;
+      // Images
+      images: string;
+      imagesDragHint: string;
+      imageUploadTitle: string;
+      imageUploadDesc: string;
+      imageUrlPlaceholder: string;
+      addUrl: string;
+      imageUrlTip: string;
+      setPrimary: string;
+      removeImage: string;
+      altText: string;
+      // Variants
+      variants: string;
+      variantsDesc: string;
+      addVariant: string;
+      noVariants: string;
+      variantName: string;
+      variantNamePlaceholder: string;
+      variantSku: string;
+      variantSkuPlaceholder: string;
+      priceModifier: string;
+      attributes: string;
+      attributesJson: string;
+      attributesPlaceholder: string;
+      removeVariant: string;
+      // Shipping
+      shipping: string;
+      weight: string;
+      length: string;
+      width: string;
+      height: string;
+      // Status
+      status: string;
+      statusActive: string;
+      statusActiveHint: string;
+      statusFeatured: string;
+      statusFeaturedHint: string;
+      statusArchived: string;
+      statusArchivedHint: string;
+      // Organisation
+      organisation: string;
+      category: string;
+      brand: string;
+      none: string;
+      // Inventory
+      inventory: string;
+      quantityAvailable: string;
+      lowStockThreshold: string;
+      lowStockHint: string;
+      // Validation
+      nameRequired: string;
+      skuRequired: string;
+      basePriceRequired: string;
+      // Success
+      productCreated: string;
+      productUpdated: string;
+      productNotFound: string;
+      saveFailed: string;
+      uploadFailed: string;
+      invalidUrl: string;
+    };
+    common: {
+      language: string;
+    };
   };
 }

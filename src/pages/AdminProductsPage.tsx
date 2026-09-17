@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Search, Plus, Archive, Eye, Pencil } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/contexts/ToastContext';
+import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
 import { Spinner } from '@/components/shared/Spinner';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -16,6 +17,9 @@ const PAGE_SIZE = 15;
 export default function AdminProductsPage() {
   const navigate = useNavigate();
   const { success } = useToast();
+  const { t } = useT();
+  const tp = t.admin.products;
+
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal]       = useState(0);
   const [page, setPage]         = useState(1);
@@ -48,7 +52,7 @@ export default function AdminProductsPage() {
   const handleArchive = async () => {
     if (!archiving) return;
     await supabase.from('products').update({ is_archived: !archiving.is_archived }).eq('id', archiving.id);
-    success(archiving.is_archived ? 'Product restored' : 'Product archived');
+    success(archiving.is_archived ? tp.productRestored : tp.productArchived);
     setArchiving(null);
     load();
   };
@@ -57,13 +61,13 @@ export default function AdminProductsPage() {
 
   return (
     <>
-      <PageSeo title="Products — Admin" />
+      <PageSeo title={`${tp.title} — Admin`} />
       <div className="admin-page-header">
         <div>
-          <h1 className="admin-page-title">Products</h1>
-          <p className="admin-page-desc">{total.toLocaleString()} total products</p>
+          <h1 className="admin-page-title">{tp.title}</h1>
+          <p className="admin-page-desc">{total.toLocaleString()} {tp.totalProducts}</p>
         </div>
-        <button className="btn btn-primary" onClick={() => navigate('/admin/products/new')}><Plus size={16} /> Add Product</button>
+        <button className="btn btn-primary" onClick={() => navigate('/admin/products/new')}><Plus size={16} /> {tp.addProduct}</button>
       </div>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -71,7 +75,7 @@ export default function AdminProductsPage() {
           <div className="admin-table-toolbar-left">
             <div className="input-group" style={{ width: 280 }}>
               <Search size={14} className="input-icon-left" />
-              <input type="search" className="input input-sm" placeholder="Search products…" value={search}
+              <input type="search" className="input input-sm" placeholder={tp.searchPlaceholder} value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }} style={{ paddingLeft: 'var(--space-9)' }} />
             </div>
           </div>
@@ -81,7 +85,7 @@ export default function AdminProductsPage() {
           <div style={{ padding: 'var(--space-12)' }}><Spinner fullPage /></div>
         ) : products.length === 0 ? (
           <div style={{ padding: 'var(--space-8)' }}>
-            <EmptyState title="No products found" description="Add your first product to get started." />
+            <EmptyState title={tp.noProducts} description={tp.noProductsDesc} />
           </div>
         ) : (
           <>
@@ -89,12 +93,12 @@ export default function AdminProductsPage() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Product</th>
-                    <th>SKU</th>
-                    <th>Category</th>
-                    <th>Price</th>
-                    <th>Stock</th>
-                    <th>Status</th>
+                    <th>{tp.colProduct}</th>
+                    <th>{tp.colSku}</th>
+                    <th>{tp.colCategory}</th>
+                    <th>{tp.colPrice}</th>
+                    <th>{tp.colStock}</th>
+                    <th>{tp.colStatus}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -109,7 +113,7 @@ export default function AdminProductsPage() {
                             <img src={img?.url ?? PLACEHOLDER} alt="" style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', objectFit: 'cover', background: 'var(--slate-100)', flexShrink: 0 }} />
                             <div>
                               <p style={{ fontWeight: 'var(--font-medium)', fontSize: 'var(--text-sm)' }}>{product.name}</p>
-                              {product.is_featured && <span className="badge badge-primary badge-sm">Featured</span>}
+                              {product.is_featured && <span className="badge badge-primary badge-sm">{tp.featured}</span>}
                             </div>
                           </div>
                         </td>
@@ -123,20 +127,20 @@ export default function AdminProductsPage() {
                         </td>
                         <td>
                           <span className={`badge${stock <= 0 ? ' badge-danger' : stock <= 5 ? ' badge-warning' : ' badge-success'}`}>
-                            {stock <= 0 ? 'Out' : stock <= 5 ? `Low (${stock})` : stock}
+                            {stock <= 0 ? tp.outOfStock : stock <= 5 ? `${tp.lowStock} (${stock})` : stock}
                           </span>
                         </td>
                         <td>
                           {product.is_archived
-                            ? <span className="badge badge-neutral">Archived</span>
-                            : product.is_active ? <span className="badge badge-success">Active</span>
-                            : <span className="badge badge-warning">Draft</span>}
+                            ? <span className="badge badge-neutral">{tp.archived}</span>
+                            : product.is_active ? <span className="badge badge-success">{tp.active}</span>
+                            : <span className="badge badge-warning">{tp.draft}</span>}
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-                            <Link to={`/product/${product.slug}`} target="_blank" className="btn btn-ghost btn-sm btn-icon" aria-label="View"><Eye size={14} /></Link>
-                            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate(`/admin/products/${product.id}/edit`)} aria-label="Edit"><Pencil size={14} /></button>
-                            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setArchiving(product)} aria-label="Archive">
+                            <Link to={`/product/${product.slug}`} target="_blank" className="btn btn-ghost btn-sm btn-icon" aria-label={tp.view}><Eye size={14} /></Link>
+                            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate(`/admin/products/${product.id}/edit`)} aria-label={tp.edit}><Pencil size={14} /></button>
+                            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setArchiving(product)} aria-label={product.is_archived ? tp.restore : tp.archive}>
                               <Archive size={14} />
                             </button>
                           </div>
@@ -158,11 +162,11 @@ export default function AdminProductsPage() {
         isOpen={!!archiving}
         onClose={() => setArchiving(null)}
         onConfirm={handleArchive}
-        title={archiving?.is_archived ? 'Restore Product' : 'Archive Product'}
+        title={archiving?.is_archived ? tp.restoreProduct : tp.archiveProduct}
         message={archiving?.is_archived
-          ? `Restore "${archiving?.name}" and make it visible again?`
-          : `Archive "${archiving?.name}"? It will be hidden from the store.`}
-        confirmLabel={archiving?.is_archived ? 'Restore' : 'Archive'}
+          ? tp.restoreConfirm.replace('{name}', archiving?.name ?? '')
+          : tp.archiveConfirm.replace('{name}', archiving?.name ?? '')}
+        confirmLabel={archiving?.is_archived ? tp.restore : tp.archive}
         variant="warning"
       />
     </>

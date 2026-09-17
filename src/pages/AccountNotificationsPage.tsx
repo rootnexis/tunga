@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Bell, Check, CheckCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { formatRelativeTime } from '@/utils/formatters';
@@ -9,6 +10,8 @@ import type { Notification } from '@/types';
 
 export default function AccountNotificationsPage() {
   const { user } = useAuth();
+  const { t } = useT();
+  const np = t.account.notificationsPage;
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -42,27 +45,29 @@ export default function AccountNotificationsPage() {
 
   return (
     <>
-      <PageSeo title="Notifications" />
+      <PageSeo title={`${np.title} — ${t.siteName}`} />
       <div className="account-card">
         <div className="account-card-header">
           <h1 className="account-card-title">
-            Notifications
+            {np.title}
             {unreadCount > 0 && (
               <span className="badge badge-primary" style={{ marginLeft: 'var(--space-2)' }}>{unreadCount}</span>
             )}
           </h1>
           {unreadCount > 0 && (
             <button className="btn btn-ghost btn-sm" onClick={markAllRead}>
-              <CheckCheck size={14} /> Mark all read
+              <CheckCheck size={14} /> {np.markAllRead}
             </button>
           )}
         </div>
 
         {isLoading ? (
-          <div style={{ padding: 'var(--space-8)', textAlign: 'center', color: 'var(--color-text-tertiary)' }}>Loading…</div>
+          <div style={{ padding: 'var(--space-8)', textAlign: 'center', color: 'var(--color-text-tertiary)' }}>
+            {np.loading}
+          </div>
         ) : notifs.length === 0 ? (
           <div style={{ padding: 'var(--space-8)' }}>
-            <EmptyState icon={Bell} title="No notifications" description="You're all caught up! We'll notify you about orders, offers, and more." />
+            <EmptyState icon={Bell} title={np.noNotifications} description={np.noNotificationsDesc} />
           </div>
         ) : (
           <div>

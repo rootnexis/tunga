@@ -518,8 +518,8 @@ export default function AdminDeliveryPage() {
                       <td style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)' }}>
                         {zone?.name ?? '—'}
                       </td>
-                      <td>{formatCurrency(m.base_fee, 'USD')}</td>
-                      <td>{m.free_above_amount ? formatCurrency(m.free_above_amount, 'USD') : '—'}</td>
+                      <td>{formatCurrency(m.base_fee, 'RWF')}</td>
+                      <td>{m.free_above_amount ? formatCurrency(m.free_above_amount, 'RWF') : '—'}</td>
                       <td style={{ color: 'var(--color-text-secondary)' }}>
                         {m.estimated_days_min && m.estimated_days_max
                           ? `${m.estimated_days_min}–${m.estimated_days_max} days`

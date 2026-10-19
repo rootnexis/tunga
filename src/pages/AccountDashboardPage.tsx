@@ -24,8 +24,11 @@ export default function AccountDashboardPage() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(5)
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         setOrders((data as Order[]) ?? []);
+        setIsLoading(false);
+      })
+      .catch(() => {
         setIsLoading(false);
       });
   }, [user]);

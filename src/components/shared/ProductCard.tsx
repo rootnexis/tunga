@@ -1,8 +1,9 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { ShoppingCart, Heart } from 'lucide-react';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingCart, Heart, Check } from 'lucide-react';
 import { StarRating } from './StarRating';
 import { useCart } from '@/contexts/CartContext';
+import { useT } from '@/contexts/LanguageContext';
 import { formatCurrency, calculateDiscount, getEffectivePrice } from '@/utils/formatters';
 import type { Product } from '@/types';
 
@@ -17,15 +18,35 @@ const PLACEHOLDER = 'data:image/svg+xml;charset=utf-8,' +
 
 export function ProductCard({ product, onWishlist, isWishlisted = false }: Props) {
   const { addItem } = useCart();
+  const { t } = useT();
+  const navigate = useNavigate();
+  const [justAdded, setJustAdded] = useState(false);
+
   const primaryImage = product.images?.find(img => img.is_primary) ?? product.images?.[0];
   const effectivePrice = getEffectivePrice(product);
   const discount = calculateDiscount(product.base_price, product.sale_price);
   const inStock = (product.inventory?.quantity_available ?? 0) > 0;
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleCardClick = (e: React.MouseEvent) => {
+    // If the click happened on a button or action element, do not navigate
+    const el = e.target as HTMLElement;
+    if (el.closest('button') || el.closest('.product-card-actions') || el.closest('.product-card-wishlist')) {
+      return;
+    }
+    navigate(`/product/${product.slug}`);
+  };
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    addItem(product.id);
+    if (!inStock) return;
+    try {
+      await addItem(product.id, 1, null);
+      setJustAdded(true);
+      setTimeout(() => setJustAdded(false), 1400);
+    } catch {
+      // handled in context
+    }
   };
 
   const handleWishlist = (e: React.MouseEvent) => {
@@ -35,8 +56,14 @@ export function ProductCard({ product, onWishlist, isWishlisted = false }: Props
   };
 
   return (
-    <Link to={`/product/${product.slug}`} className="product-card" aria-label={product.name}>
-      {/* Image */}
+    <div
+      className="product-card"
+      onClick={handleCardClick}
+      role="group"
+      aria-label={product.name}
+      style={{ cursor: 'pointer' }}
+    >
+      {/* Image & Badges */}
       <div className="product-card-image">
         <img
           src={primaryImage?.url ?? PLACEHOLDER}
@@ -47,22 +74,24 @@ export function ProductCard({ product, onWishlist, isWishlisted = false }: Props
         {/* Badges */}
         <div className="product-card-badges">
           {product.is_featured && (
-            <span className="badge badge-primary">Featured</span>
+            <span className="badge badge-primary">{t.product.featured}</span>
           )}
           {discount > 0 && (
             <span className="badge badge-danger">-{discount}%</span>
           )}
           {!inStock && (
-            <span className="badge badge-neutral">Out of stock</span>
+            <span className="badge badge-neutral">{t.product.outOfStock}</span>
           )}
         </div>
 
-        {/* Wishlist btn */}
+        {/* Wishlist button */}
         {onWishlist && (
           <button
+            type="button"
+            data-no-route-loader="true"
             className={`product-card-wishlist${isWishlisted ? ' active' : ''}`}
             onClick={handleWishlist}
-            aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            aria-label={isWishlisted ? t.product.wishlist : t.product.wishlist}
           >
             <Heart size={14} fill={isWishlisted ? 'currentColor' : 'transparent'} />
           </button>
@@ -70,14 +99,26 @@ export function ProductCard({ product, onWishlist, isWishlisted = false }: Props
 
         {/* Add to cart overlay */}
         {inStock && (
-          <div className="product-card-actions">
+          <div className="product-card-actions" data-no-route-loader="true">
             <button
-              className="btn btn-primary btn-sm w-full"
+              type="button"
+              data-no-route-loader="true"
+              className={`btn btn-primary btn-sm w-full${justAdded ? ' btn-success' : ''}`}
               onClick={handleAddToCart}
-              aria-label={`Add ${product.name} to cart`}
+              aria-label={`${t.product.addToCart}: ${product.name}`}
+              style={justAdded ? { background: '#10b981', borderColor: '#10b981', color: '#fff' } : undefined}
             >
-              <ShoppingCart size={14} />
-              Add to Cart
+              {justAdded ? (
+                <>
+                  <Check size={14} />
+                  <span>{t.product.added}</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingCart size={14} />
+                  <span>{t.product.addToCart}</span>
+                </>
+              )}
             </button>
           </div>
         )}
@@ -88,7 +129,15 @@ export function ProductCard({ product, onWishlist, isWishlisted = false }: Props
         {product.category && (
           <p className="product-card-category">{product.category.name}</p>
         )}
-        <h3 className="product-card-name">{product.name}</h3>
+        <h3 className="product-card-name">
+          <Link
+            to={`/product/${product.slug}`}
+            className="product-card-name-link"
+            style={{ color: 'inherit', textDecoration: 'none' }}
+          >
+            {product.name}
+          </Link>
+        </h3>
 
         {(product.average_rating !== undefined && product.average_rating > 0) && (
           <div className="product-card-rating">
@@ -109,10 +158,10 @@ export function ProductCard({ product, onWishlist, isWishlisted = false }: Props
             </span>
           )}
           {discount > 0 && (
-            <span className="product-price-discount">Save {discount}%</span>
+            <span className="product-price-discount">{t.product.saveDiscount} {discount}%</span>
           )}
         </div>
       </div>
-    </Link>
+    </div>
   );
 }

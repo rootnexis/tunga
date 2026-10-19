@@ -97,7 +97,7 @@ export function Footer() {
             <div className="footer-contact-list">
               <a href="mailto:hello@tunga.com" className="footer-contact-item">
                 <Mail size={14} />
-                hello@tunga.com
+                hello@ituze.com
               </a>
               <a href="tel:+15551234567" className="footer-contact-item">
                 <Phone size={14} />
@@ -165,7 +165,20 @@ export function Footer() {
 
         {/* ── Bottom ── */}
         <div className="footer-bottom">
-          <p>© {currentYear} {t.siteName}. {t.footer.copyright}</p>
+          <div className="footer-bottom-info">
+            <p>© {currentYear} {t.siteName}. {t.footer.copyright}</p>
+            <p className="footer-creator-credit">
+              Created by{' '}
+              <a
+                href="https://rootnexis.kesug.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="footer-creator-link"
+              >
+                RootNexis
+              </a>
+            </p>
+          </div>
           <div className="footer-bottom-links">
             <Link to="/privacy">{t.footer.privacy}</Link>
             <Link to="/terms">{t.footer.terms}</Link>

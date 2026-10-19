@@ -2,10 +2,9 @@ import { supabase } from '@/lib/supabase';
 import type { ProductSummary, OrderSummary, ChatMessage } from '@/types/chat';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-
 const GEMINI_MODEL = 'gemini-1.5-flash';
 
-// Curated store catalog for Tunga
+// Exact curated products currently available in the Ituze store catalog
 export const FALLBACK_POPULAR_PRODUCTS: ProductSummary[] = [
   {
     id: 'p0000000-0000-0000-0000-000000000001',
@@ -13,8 +12,8 @@ export const FALLBACK_POPULAR_PRODUCTS: ProductSummary[] = [
     slug: 'novasound-pro-wireless-headphones',
     base_price: 299.99,
     sale_price: 249.99,
-    currency: 'RWF',
-    image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
+    currency: 'USD',
+    image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80',
     category: 'Audio & Sound',
     average_rating: 4.9,
     short_description: 'Active noise cancelling headphones with 40h battery life and spatial audio.',
@@ -23,46 +22,58 @@ export const FALLBACK_POPULAR_PRODUCTS: ProductSummary[] = [
     id: 'p0000000-0000-0000-0000-000000000002',
     name: 'Apex Chrono Smartwatch Ultra',
     slug: 'apex-chrono-smartwatch-ultra',
-    base_price: 229.99,
-    sale_price: 199.99,
-    currency: 'RWF',
-    image_url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
+    base_price: 399.00,
+    sale_price: 349.00,
+    currency: 'USD',
+    image_url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
     category: 'Wearables',
     average_rating: 4.8,
-    short_description: 'Rugged titanium smartwatch with heart-rate tracking, GPS, and 7-day battery.',
+    short_description: 'Titanium bezel smartwatch with biometric tracking and always-on OLED display.',
   },
   {
     id: 'p0000000-0000-0000-0000-000000000003',
-    name: 'Lumina Pulse Ambient Light Bar',
-    slug: 'lumina-pulse-ambient-light-bar',
+    name: 'Aura Magnetic Wireless Power Bank',
+    slug: 'aura-magnetic-wireless-power-bank',
     base_price: 79.99,
     sale_price: null,
-    currency: 'RWF',
-    image_url: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=500&q=80',
-    category: 'Smart Home',
+    currency: 'USD',
+    image_url: 'https://images.unsplash.com/photo-1609592807908-62a2fa84b80b?w=800&q=80',
+    category: 'Accessories',
     average_rating: 4.7,
-    short_description: 'Smart RGB lighting bar syncing to music and screen colors with companion app.',
+    short_description: '10,000mAh snap-on magnetic fast charger with aluminum casing.',
   },
   {
     id: 'p0000000-0000-0000-0000-000000000004',
+    name: 'Lumina Flow Ambient Light Bar',
+    slug: 'lumina-flow-ambient-light-bar',
+    base_price: 119.00,
+    sale_price: 99.00,
+    currency: 'USD',
+    image_url: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=800&q=80',
+    category: 'Smart Home',
+    average_rating: 4.8,
+    short_description: 'Smart RGBIC dynamic monitor and room light bar with audio sync.',
+  },
+  {
+    id: 'p0000000-0000-0000-0000-000000000005',
     name: 'Aura Pods True Wireless Earbuds',
     slug: 'aura-pods-true-wireless-earbuds',
     base_price: 149.99,
     sale_price: 129.99,
-    currency: 'RWF',
-    image_url: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&q=80',
+    currency: 'USD',
+    image_url: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&q=80',
     category: 'Audio & Sound',
     average_rating: 4.8,
     short_description: 'Compact IPX7 waterproof wireless earbuds with wireless charging case.',
   },
   {
-    id: 'p0000000-0000-0000-0000-000000000005',
+    id: 'p0000000-0000-0000-0000-000000000006',
     name: 'Apex MagCharge 3-in-1 Station',
     slug: 'apex-magcharge-3-in-1-charging-station',
     base_price: 89.99,
     sale_price: null,
-    currency: 'RWF',
-    image_url: 'https://images.unsplash.com/photo-1586816879360-004f5b0c51e3?w=500&q=80',
+    currency: 'USD',
+    image_url: 'https://images.unsplash.com/photo-1586816879360-004f5b0c51e3?w=800&q=80',
     category: 'Accessories',
     average_rating: 4.6,
     short_description: 'Simultaneous fast wireless charging for your phone, smartwatch, and earbuds.',
@@ -101,7 +112,7 @@ export async function fetchPopularProducts(): Promise<ProductSummary[]> {
       const primaryImage =
         p.images?.find((img: any) => img.is_primary)?.url ||
         p.images?.[0]?.url ||
-        'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80';
+        'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80';
 
       return {
         id: p.id,
@@ -109,14 +120,14 @@ export async function fetchPopularProducts(): Promise<ProductSummary[]> {
         slug: p.slug,
         base_price: Number(p.base_price),
         sale_price: p.sale_price ? Number(p.sale_price) : null,
-        currency: p.currency || 'RWF',
+        currency: p.currency || 'USD',
         image_url: primaryImage,
         category: p.category?.name || 'Electronics',
         short_description: p.short_description || undefined,
       };
     });
     lastProductFetch = now;
-    return cachedProducts;
+    return cachedProducts || FALLBACK_POPULAR_PRODUCTS;
   } catch {
     cachedProducts = FALLBACK_POPULAR_PRODUCTS;
     lastProductFetch = now;
@@ -145,7 +156,7 @@ export async function fetchUserOrders(userId?: string): Promise<OrderSummary[]> 
       order_number: o.order_number,
       status: o.status,
       total: Number(o.total),
-      currency: o.currency || 'RWF',
+      currency: o.currency || 'USD',
       created_at: o.created_at,
       item_count: o.items?.length || 0,
       items_summary: o.items?.map((i: any) => `${i.product_name} (x${i.quantity})`) || [],
@@ -175,7 +186,7 @@ export async function findOrderByNumber(orderNum: string): Promise<OrderSummary 
       order_number: data.order_number,
       status: data.status,
       total: Number(data.total),
-      currency: data.currency || 'RWF',
+      currency: data.currency || 'USD',
       created_at: data.created_at,
       item_count: data.items?.length || 0,
       items_summary: data.items?.map((i: any) => `${i.product_name} (x${i.quantity})`) || [],
@@ -192,10 +203,38 @@ export interface AssistantResponse {
 }
 
 /**
- * Intelligent high-speed knowledge engine covering ALL e-commerce questions
- * when live Gemini API has network latency, is unavailable, or times out.
+ * Checks whether user message explicitly inquires about products or items to buy.
  */
-function generateIntelligentTungaResponse(
+function isExplicitProductInquiry(query: string): boolean {
+  const q = query.toLowerCase();
+  return (
+    q.includes('show product') ||
+    q.includes('recommend') ||
+    q.includes('show me') ||
+    q.includes('what do you sell') ||
+    q.includes('products you have') ||
+    q.includes('catalog') ||
+    q.includes('looking for') ||
+    q.includes('want to buy') ||
+    q.includes('headphone') ||
+    q.includes('earbud') ||
+    q.includes('watch') ||
+    q.includes('chrono') ||
+    q.includes('light bar') ||
+    q.includes('power bank') ||
+    q.includes('charger') ||
+    q.includes('speaker') ||
+    q.includes('ibicuruzwa') ||
+    q.includes('reba ibicuruzwa') ||
+    q.includes('bidhaa')
+  );
+}
+
+/**
+ * Intelligent high-speed knowledge engine covering ALL e-commerce questions for Ituze.
+ * Direct answers to questions asked, without unsolicited product attachments.
+ */
+function generateIntelligentItuzeResponse(
   query: string,
   products: ProductSummary[],
   orders: OrderSummary[],
@@ -205,7 +244,6 @@ function generateIntelligentTungaResponse(
   specificOrder?: OrderSummary | null
 ): AssistantResponse {
   const q = query.toLowerCase();
-  const matchedProducts: ProductSummary[] = [];
   const matchedOrders: OrderSummary[] = [];
 
   const customerName = userName || (lang === 'fr' ? 'Cher client' : lang === 'rw' ? 'Mukunzi' : lang === 'sw' ? 'Mteja' : 'Valued Customer');
@@ -215,13 +253,13 @@ function generateIntelligentTungaResponse(
     matchedOrders.push(specificOrder);
     let text = '';
     if (lang === 'fr') {
-      text = `J'ai retrouvé votre commande **#${specificOrder.order_number}** !\n\n- **Statut actuel :** ${specificOrder.status.toUpperCase()}\n- **Montant total :** $${specificOrder.total} ${specificOrder.currency}\n- **Articles :** ${specificOrder.items_summary?.join(', ') || 'Articles Tunga'}\n- **Date :** ${new Date(specificOrder.created_at).toLocaleDateString()}\n\nVous pouvez cliquer sur la carte ci-dessous pour suivre votre colis en temps réel.`;
+      text = `J'ai retrouvé votre commande **#${specificOrder.order_number}** !\n\n- **Statut actuel :** ${specificOrder.status.toUpperCase()}\n- **Montant total :** $${specificOrder.total} ${specificOrder.currency}\n- **Articles :** ${specificOrder.items_summary?.join(', ') || 'Articles Ituze'}\n- **Date :** ${new Date(specificOrder.created_at).toLocaleDateString()}\n\nVous pouvez cliquer sur la carte ci-dessous pour suivre votre colis en temps réel.`;
     } else if (lang === 'rw') {
-      text = `Nabonye komande yawe **#${specificOrder.order_number}** !\n\n- **Imiterere :** ${specificOrder.status.toUpperCase()}\n- **Amafaranga yose :** $${specificOrder.total} ${specificOrder.currency}\n- **Ibicuruzwa :** ${specificOrder.items_summary?.join(', ') || 'Ibicuruzwa bya Tunga'}\n- **Itariki :** ${new Date(specificOrder.created_at).toLocaleDateString()}\n\nKanda ku ikarita iri munsi kugira ngo ukurikirane komande yawe.`;
+      text = `Nabonye komande yawe **#${specificOrder.order_number}** !\n\n- **Imiterere :** ${specificOrder.status.toUpperCase()}\n- **Amafaranga yose :** $${specificOrder.total} ${specificOrder.currency}\n- **Ibicuruzwa :** ${specificOrder.items_summary?.join(', ') || 'Ibicuruzwa bya Ituze'}\n- **Itariki :** ${new Date(specificOrder.created_at).toLocaleDateString()}\n\nKanda ku ikarita iri munsi kugira ngo ukurikirane komande yawe.`;
     } else if (lang === 'sw') {
-      text = `Nimepata agizo lako **#${specificOrder.order_number}** !\n\n- **Hali ya sasa :** ${specificOrder.status.toUpperCase()}\n- **Jumla ya gharama :** $${specificOrder.total} ${specificOrder.currency}\n- **Vitu :** ${specificOrder.items_summary?.join(', ') || 'Bidhaa za Tunga'}\n- **Tarehe :** ${new Date(specificOrder.created_at).toLocaleDateString()}\n\nBofya kadi hapa chini kufuatilia kifurushi chako.`;
+      text = `Nimepata agizo lako **#${specificOrder.order_number}** !\n\n- **Hali ya sasa :** ${specificOrder.status.toUpperCase()}\n- **Jumla ya gharama :** $${specificOrder.total} ${specificOrder.currency}\n- **Vitu :** ${specificOrder.items_summary?.join(', ') || 'Bidhaa za Ituze'}\n- **Tarehe :** ${new Date(specificOrder.created_at).toLocaleDateString()}\n\nBofya kadi hapa chini kufuatilia kifurushi chako.`;
     } else {
-      text = `Found your order **#${specificOrder.order_number}**!\n\n- **Current Status:** ${specificOrder.status.toUpperCase()}\n- **Order Total:** $${specificOrder.total} ${specificOrder.currency}\n- **Items:** ${specificOrder.items_summary?.join(', ') || 'Tunga items'}\n- **Placed On:** ${new Date(specificOrder.created_at).toLocaleDateString()}\n\nTap the order card below to view live tracking details or download invoice.`;
+      text = `Found your order **#${specificOrder.order_number}**!\n\n- **Current Status:** ${specificOrder.status.toUpperCase()}\n- **Order Total:** $${specificOrder.total} ${specificOrder.currency}\n- **Items:** ${specificOrder.items_summary?.join(', ') || 'Ituze items'}\n- **Placed On:** ${new Date(specificOrder.created_at).toLocaleDateString()}\n\nTap the order card below to view live tracking details or download invoice.`;
     }
     return { content: text, matchedOrders };
   }
@@ -242,37 +280,37 @@ function generateIntelligentTungaResponse(
       matchedOrders.push(...orders.slice(0, 3));
       let text = '';
       if (lang === 'fr') {
-        text = `Bonjour **${customerName}**, voici le récapitulatif de vos commandes récentes sur Tunga :\n\n- **Suivi en direct :** Cliquez sur une commande pour afficher les détails d'expédition.\n- **Délais de livraison :** Les colis standard arrivent sous 3 à 5 jours ouvrés.\n- **Besoin d'aide ?** Vous pouvez également m'indiquer votre numéro de commande (ex: ORD-2026-XXXX).`;
+        text = `Bonjour **${customerName}**, voici le récapitulatif de vos commandes récentes sur Ituze :\n\n- **Suivi en direct :** Cliquez sur une commande pour afficher les détails d'expédition.\n- **Délais de livraison :** Les colis standard arrivent sous 3 à 5 jours ouvrés.\n- **Besoin d'aide ?** Vous pouvez également m'indiquer votre numéro de commande (ex: ORD-2026-XXXX).`;
       } else if (lang === 'rw') {
-        text = `Muraho **${customerName}**, dore ibyo uherutse gutumiza kuri Tunga :\n\n- **Gukurikirana :** Kanda kuri komande wifuza kureba uko ihagaze.\n- **Igihe cyo kugezwaho :** Bitwara iminsi 3 kugeza kuri 5 y'akazi.\n- **Ubufasha :** Ushobora no kunyandikira numero ya komande yawe (urugero: ORD-2026-XXXX).`;
+        text = `Muraho **${customerName}**, dore ibyo uherutse gutumiza kuri Ituze :\n\n- **Gukurikirana :** Kanda kuri komande wifuza kureba uko ihagaze.\n- **Igihe cyo kugezwaho :** Bitwara iminsi 3 kugeza kuri 5 y'akazi.\n- **Ubufasha :** Ushobora no kunyandikira numero ya komande yawe (urugero: ORD-2026-XXXX).`;
       } else if (lang === 'sw') {
-        text = `Habari **${customerName}**, hapa kuna maagizo yako ya hivi karibuni kwenye Tunga :\n\n- **Ufuatiliaji :** Bofya agizo kuangalia maelezo ya usafirishaji.\n- **Muda wa kuwasili :** Siku 3 hadi 5 za kazi kwa usafirishaji wa kawaida.\n- **Msaada :** Unaweza pia kunitumia nambari ya agizo lako (mfano: ORD-2026-XXXX).`;
+        text = `Habari **${customerName}**, hapa kuna maagizo yako ya hivi karibuni kwenye Ituze :\n\n- **Ufuatiliaji :** Bofya agizo kuangalia maelezo ya usafirishaji.\n- **Muda wa kuwasili :** Siku 3 hadi 5 za kazi kwa usafirishaji wa kawaida.\n- **Msaada :** Unaweza pia kunitumia nambari ya agizo lako (mfano: ORD-2026-XXXX).`;
       } else {
-        text = `Hello **${customerName}**, here are your recent orders placed on Tunga:\n\n- **Live Tracking:** Tap any order card below to see detailed delivery progress.\n- **Delivery Timing:** Standard shipments arrive within 3–5 business days.\n- **Direct Lookup:** You can also type any specific order number (e.g., ORD-2026-XXXX).`;
+        text = `Hello **${customerName}**, here are your recent orders placed on Ituze:\n\n- **Live Tracking:** Tap any order card below to see detailed delivery progress.\n- **Delivery Timing:** Standard shipments arrive within 3–5 business days.\n- **Direct Lookup:** You can also type any specific order number (e.g., ORD-2026-XXXX).`;
       }
       return { content: text, matchedOrders };
     } else if (userId) {
       let text = '';
       if (lang === 'fr') {
-        text = `Vous n'avez pas encore passé de commande sur Tunga. Découvrez nos produits phares et profitez de notre garantie satisfaction !`;
+        text = `Vous n'avez pas encore passé de commande sur Ituze. Vos achats apparaîtront automatiquement ici dès votre première commande.`;
       } else if (lang === 'rw') {
-        text = `Nta komande urakora kuri Tunga. Reba ibicuruzwa bikunzwe witegure guhaha mu mutekano !`;
+        text = `Nta komande urakora kuri Ituze. Ibyo uzagura byose bizahita bigaragara hano.`;
       } else if (lang === 'sw') {
-        text = `Bado haujaweka agizo lolote kwenye Tunga. Angalia bidhaa zetu maarufu na ufurahie ununuzi salama !`;
+        text = `Bado haujaweka agizo lolote kwenye Ituze. Maagizo yako yataonekana hapa pindi unapofanya ununuzi.`;
       } else {
-        text = `You don't have any active orders right now. Explore our catalog below to start shopping with 100% genuine products and fast delivery!`;
+        text = `You don't have any active orders right now. Once you place an order, live tracking and receipts will appear right here.`;
       }
-      return { content: text, matchedProducts: products.slice(0, 3) };
+      return { content: text };
     } else {
       let text = '';
       if (lang === 'fr') {
-        text = `Pour consulter vos commandes, veuillez vous [connecter à votre compte](/login) ou me fournir directement votre référence de commande (ex: **ORD-2026-XXXX**).\n\n- **Connexion rapide :** Vos commandes sont enregistrées dans votre espace client.\n- **Recherche immédiate :** Entrez votre référence pour un statut instantané.`;
+        text = `Pour consulter vos commandes, veuillez vous [connecter à votre compte](/auth/login) ou me fournir directement votre référence de commande (ex: **ORD-2026-XXXX**).\n\n- **Connexion rapide :** Vos commandes sont enregistrées dans votre espace client.\n- **Recherche immédiate :** Entrez votre référence pour un statut instantané.`;
       } else if (lang === 'rw') {
-        text = `Kugira ngo urebe ibyo watumije, nyamuneka [injira kuri konti yawe](/login) cyangwa unyandikire numero ya komande yawe (urugero: **ORD-2026-XXXX**).\n\n- **Kwinjira :** Komande zawe zose zibitse muri konti yawe.\n- **Gushakisha :** Andika numero ya komande ngufashe aka kanya.`;
+        text = `Kugira ngo urebe ibyo watumije, nyamuneka [injira kuri konti yawe](/auth/login) cyangwa unyandikire numero ya komande yawe (urugero: **ORD-2026-XXXX**).\n\n- **Kwinjira :** Komande zawe zose zibitse muri konti yawe.\n- **Gushakisha :** Andika numero ya komande ngufashe aka kanya.`;
       } else if (lang === 'sw') {
-        text = `Kuangalia maagizo yako, tafadhali [ingia kwenye akaunti yako](/login) au weka nambari ya agizo lako hapa (mfano: **ORD-2026-XXXX**).\n\n- **Ingia :** Maagizo yote yamehifadhiwa kwenye akaunti yako.\n- **Tafuta :** Weka nambari ya agizo upate maelezo ya haraka.`;
+        text = `Kuangalia maagizo yako, tafadhali [ingia kwenye akaunti yako](/auth/login) au weka nambari ya agizo lako hapa (mfano: **ORD-2026-XXXX**).\n\n- **Ingia :** Maagizo yote yamehifadhiwa kwenye akaunti yako.\n- **Tafuta :** Weka nambari ya agizo upate maelezo ya haraka.`;
       } else {
-        text = `To view your orders, please [sign in to your account](/login) or type your Order Number (e.g. **ORD-2026-XXXX**).\n\n- **Account Orders:** Sign in to see past history, receipts, and order statuses.\n- **Guest Lookup:** Type your order number anytime for instant tracking!`;
+        text = `To view your orders, please [sign in to your account](/auth/login) or type your Order Number (e.g. **ORD-2026-XXXX**).\n\n- **Account Orders:** Sign in to see past history, receipts, and order statuses.\n- **Guest Lookup:** Type your order number anytime for instant tracking!`;
       }
       return { content: text };
     }
@@ -292,13 +330,13 @@ function generateIntelligentTungaResponse(
   if (isShippingIntent) {
     let text = '';
     if (lang === 'fr') {
-      text = `Voici la politique de livraison officielle de **Tunga** :\n\n- **Livraison Gratuite :** Offerte pour toute commande supérieure à **$50 USD**.\n- **Livraison Standard :** 3 à 5 jours ouvrés ($5.00 USD).\n- **Livraison Express :** 1 à 2 jours ouvrés ($12.00 USD).\n- **Livraison Internationale :** Expédition sécurisée vers plus de 80 pays.\n- **Suivi des colis :** Numéro de suivi fourni dès l'expédition avec notifications SMS/Email.`;
+      text = `Voici la politique de livraison officielle de **Ituze** :\n\n- **Livraison Gratuite :** Offerte pour toute commande supérieure à **$50 USD**.\n- **Livraison Standard :** 3 à 5 jours ouvrés ($4.99 USD).\n- **Livraison Express :** 1 à 2 jours ouvrés ($12.99 USD).\n- **Suivi des colis :** Numéro de suivi fourni dès l'expédition avec notifications SMS/Email.\n- **Couverture :** Expédition rapide et sécurisée.`;
     } else if (lang === 'rw') {
-      text = `Dore amabwiriza yo kugeza ibicuruzwa ku bakiriya kuri **Tunga** :\n\n- **Kugezwaho ku buntu :** Kuri buri komande irengeje **$50 USD**.\n- **Uburyo busanzwe (Standard) :** Iminsi 3 kugeza kuri 5 y'akazi ($5.00 USD).\n- **Uburyo bwihuse (Express) :** Umunsi 1 kugeza kuri 2 y'akazi ($12.00 USD).\n- **Kuri Kigali & Intara :** Dukurikirana ko ibicuruzwa bikugiraho neza.\n- **Gukurikirana :** Uhita uhabwa uburyo bwo gukurikirana ipaki yawe.`;
+      text = `Dore amabwiriza yo kugeza ibicuruzwa ku bakiriya kuri **Ituze** :\n\n- **Kugezwaho ku buntu :** Kuri buri komande irengeje **$50 USD**.\n- **Uburyo busanzwe (Standard) :** Iminsi 3 kugeza kuri 5 y'akazi ($4.99 USD).\n- **Uburyo bwihuse (Express) :** Umunsi 1 kugeza kuri 2 y'akazi ($12.99 USD).\n- **Gukurikirana :** Uhita uhabwa uburyo bwo gukurikirana ipaki yawe ako kanya.`;
     } else if (lang === 'sw') {
-      text = `Hapa kuna sera rasmi ya usafirishaji ya **Tunga** :\n\n- **Usafirishaji wa Bure :** Kwa maagizo yote zaidi ya **$50 USD**.\n- **Usafirishaji wa Kawaida :** Siku 3 hadi 5 za kazi ($5.00 USD).\n- **Usafirishaji wa Haraka (Express) :** Siku 1 hadi 2 za kazi ($12.00 USD).\n- **Mataifa mengine :** Tunasafirisha kwa usalama katika nchi zaidi ya 80.\n- **Ufuatiliaji :** Utapokea nambari ya kufuatilia kifurushi mara tu kinapotumwa.`;
+      text = `Hapa kuna sera rasmi ya usafirishaji ya **Ituze** :\n\n- **Usafirishaji wa Bure :** Kwa maagizo yote zaidi ya **$50 USD**.\n- **Usafirishaji wa Kawaida :** Siku 3 hadi 5 za kazi ($4.99 USD).\n- **Usafirishaji wa Haraka (Express) :** Siku 1 hadi 2 za kazi ($12.99 USD).\n- **Ufuatiliaji :** Utapokea nambari ya kufuatilia kifurushi mara tu kinapotumwa.`;
     } else {
-      text = `Here is everything you need to know about shipping with **Tunga**:\n\n- **Free Shipping:** Automatic free delivery on orders over **$50 USD**!\n- **Standard Delivery:** 3–5 business days ($5.00 USD).\n- **Express Delivery:** 1–2 business days ($12.00 USD).\n- **Global Coverage:** Fast, insured delivery across East Africa and to 80+ countries.\n- **Package Tracking:** Real-time tracking link and notifications sent via SMS and email.`;
+      text = `Here is everything you need to know about shipping with **Ituze**:\n\n- **Free Shipping:** Automatic free delivery on orders over **$50 USD**!\n- **Standard Delivery:** 3–5 business days ($4.99 USD).\n- **Express Priority:** 1–2 business days ($12.99 USD).\n- **Package Tracking:** Real-time tracking link and notifications sent via SMS and email.`;
     }
     return { content: text };
   }
@@ -320,15 +358,15 @@ function generateIntelligentTungaResponse(
   if (isDealsIntent) {
     let text = '';
     if (lang === 'fr') {
-      text = `Profitez de nos offres et réductions exclusives chez **Tunga** !\n\n- **Code WELCOME10 :** 10% de réduction immédiate sur votre première commande.\n- **Code SAVE20 :** Réduction de 20% pour les paniers supérieurs à $150 USD.\n- **Code TUNGAVIP :** Avantages exclusifs pour les membres VIP.\n- **Comment l'appliquer :** Entrez simplement le code dans le champ "Code promo" lors de votre paiement.`;
+      text = `Voici les codes promo actifs valables sur **Ituze** :\n\n- **Code WELCOME10 :** 10% de réduction immédiate sur votre commande.\n- **Code SAVE20 :** Réduction de 20% pour les paniers supérieurs à $150 USD.\n- **Application :** Entrez le code dans le champ "Code promo" lors de la finalisation de votre commande.`;
     } else if (lang === 'rw') {
-      text = `Dore amakode y'ingirakamaro agabanya ibiciro kuri **Tunga** !\n\n- **Kodi WELCOME10 :** Igabanuka rya 10% kuri komande yawe ya mbere.\n- **Kodi SAVE20 :** Igabanuka rya 20% kuri komande irengeje $150 USD.\n- **Kodi TUNGAVIP :** Ibyiza bidasanzwe ku banyamuryango ba Tunga VIP.\n- **Uko ikoreshwa :** Wandika iyo kodi mu mwanya wagenewe "Discount Code" wishyura.`;
+      text = `Dore amakode y'ingirakamaro agabanya ibiciro kuri **Ituze** :\n\n- **Kodi WELCOME10 :** Igabanuka rya 10% kuri komande yawe.\n- **Kodi SAVE20 :** Igabanuka rya 20% kuri komande irengeje $150 USD.\n- **Uko ikoreshwa :** Wandika iyo kodi mu mwanya wagenewe "Discount Code" wishyura.`;
     } else if (lang === 'sw') {
-      text = `Pata ofa na punguzo kabambe kutoka **Tunga** !\n\n- **Kodi WELCOME10 :** Punguzo la 10% kwenye agizo lako la kwanza.\n- **Kodi SAVE20 :** Punguzo la 20% kwa maagizo zaidi ya $150 USD.\n- **Kodi TUNGAVIP :** Faida za kipekee kwa wanachama wa Tunga VIP.\n- **Jinsi ya kutumia :** Weka kodi hiyo kwenye sehemu ya "Discount Code" wakati wa kulipa.`;
+      text = `Pata ofa na punguzo kabambe kutoka **Ituze** :\n\n- **Kodi WELCOME10 :** Punguzo la 10% kwenye agizo lako.\n- **Kodi SAVE20 :** Punguzo la 20% kwa maagizo zaidi ya $150 USD.\n- **Jinsi ya kutumia :** Weka kodi hiyo kwenye sehemu ya "Discount Code" wakati wa kulipa.`;
     } else {
-      text = `Here are active discounts and special promotions you can use right now on **Tunga**:\n\n- **Code WELCOME10:** 10% OFF your first order storewide.\n- **Code SAVE20:** 20% OFF when your cart total exceeds $150 USD.\n- **Code TUNGAVIP:** VIP privileges and seasonal member discounts.\n- **How to apply:** Enter your promo code in the "Discount Code" box at Checkout and click Apply!`;
+      text = `Here are active discount codes you can apply on **Ituze**:\n\n- **Code WELCOME10:** 10% OFF your order storewide.\n- **Code SAVE20:** 20% OFF when your cart total exceeds $150 USD.\n- **How to apply:** Enter your code in the "Discount Code" field at Checkout and tap Apply!`;
     }
-    return { content: text, matchedProducts: products.slice(0, 3) };
+    return { content: text };
   }
 
   // 5. RETURNS & REFUNDS INTENT
@@ -346,13 +384,13 @@ function generateIntelligentTungaResponse(
   if (isReturnIntent) {
     let text = '';
     if (lang === 'fr') {
-      text = `Notre politique de retour chez **Tunga** est simple et transparente :\n\n- **Délai de retour :** Vous disposez de **30 jours** à compter de la réception pour retourner un article.\n- **Conditions :** L'article doit être neuf, inutilisé, avec ses étiquettes et son emballage d'origine.\n- **Remboursement rapide :** Le montant est crédité sous 3 à 5 jours ouvrés sur votre moyen de paiement initial.\n- **Comment initier :** Rendez-vous dans votre espace client sous "Mes commandes" puis cliquez sur "Demander un retour".`;
+      text = `Notre politique de retour chez **Ituze** est simple et transparente :\n\n- **Délai :** Vous disposez de **30 jours** à compter de la réception pour retourner un article.\n- **Condition :** L'article doit être dans son état et emballage d'origine avec ses étiquettes.\n- **Remboursement rapide :** Crédité sous 3 à 5 jours ouvrés sur votre moyen de paiement initial.\n- **Démarche :** Rendez-vous dans votre compte client sous "Mes commandes" pour demander un retour.`;
     } else if (lang === 'rw') {
-      text = `Dore amategeko yo gusubiza ibicuruzwa kuri **Tunga** :\n\n- **Igihe cyo gusubiza :** Ufite **iminsi 30** uhereye igihe wakiriye igicuruzwa cyawe.\n- **Ibisabwa :** Igicuruzwa kigomba kuba kikiri gishya, kitarakoreshejwe kandi gifite ibirango byacyo byose.\n- **Kwishyurwa :** Amafaranga yawe agarurwa mu minsi 3 kugeza kuri 5 y'akazi.\n- **Uko ubisaba :** Jya kuri konti yawe mu gice cya "My Orders" uhitemo "Request Return".`;
+      text = `Dore amategeko yo gusubiza ibicuruzwa kuri **Ituze** :\n\n- **Igihe cyo gusubiza :** Ufite **iminsi 30** uhereye igihe wakiriye igicuruzwa cyawe.\n- **Ibisabwa :** Igicuruzwa kigomba kuba kikiri gishya mu bipfunyika byacyo by'umwimerere.\n- **Kwishyurwa :** Amafaranga agarurwa mu minsi 3 kugeza kuri 5 y'akazi.\n- **Uko ubisaba :** Jya muri konti yawe mu gice cya "My Orders" uhitemo "Request Return".`;
     } else if (lang === 'sw') {
-      text = `Sera yetu ya kurudisha bidhaa kwenye **Tunga** ni rahisi sana :\n\n- **Muda wa kurudisha :** Una siku **30** kuanzia siku uliyopokea bidhaa.\n- **Masharti :** Bidhaa lazima iwe mpya, haijatumika, na ina vifungashio vyake asili.\n- **Kurejeshewa pesa :** Pesa zitarudishwa ndani ya siku 3 hadi 5 za kazi kwenye njia yako ya malipo.\n- **Jinsi ya kuanza :** Ingia kwenye akaunti yako, chagua "My Orders" kisha bofya "Request Return".`;
+      text = `Sera yetu ya kurudisha bidhaa kwenye **Ituze** ni rahisi sana :\n\n- **Muda :** Una siku **30** kuanzia siku uliyopokea bidhaa.\n- **Masharti :** Bidhaa lazima iwe mpya na katika vifungashio vyake asili.\n- **Kurejeshewa pesa :** Ndani ya siku 3 hadi 5 za kazi kwenye njia yako ya malipo.\n- **Jinsi ya kuanza :** Ingia kwenye akaunti yako, chagua "My Orders" kisha bofya "Request Return".`;
     } else {
-      text = `Here is **Tunga's** hassle-free return and refund policy:\n\n- **30-Day Window:** Return any item within 30 days of delivery for a full refund or exchange.\n- **Condition:** Items must be unused, unwashed, with original tags and packaging intact.\n- **Speedy Refunds:** Processed within 3–5 business days back to your original payment method.\n- **How to Start:** Go to your account under **My Orders** and tap **Request Return** to get a prepaid return label.`;
+      text = `Here is **Ituze's** 30-day hassle-free return and refund policy:\n\n- **30-Day Window:** Return any item within 30 days of delivery for a full refund or exchange.\n- **Condition:** Items must be in original packaging and undamaged.\n- **Fast Refund:** Processed within 3–5 business days to your original payment method.\n- **How to Start:** Go to your account under **My Orders** and tap **Request Return**.`;
     }
     return { content: text };
   }
@@ -373,13 +411,13 @@ function generateIntelligentTungaResponse(
   if (isPaymentIntent) {
     let text = '';
     if (lang === 'fr') {
-      text = `**Tunga** propose des méthodes de paiement sécurisées et locales :\n\n- **Mobile Money :** MTN Mobile Money (MoMo) & Airtel Money.\n- **Cartes bancaires :** Visa, Mastercard & American Express.\n- **Portefeuilles numériques :** PayPal & Apple Pay.\n- **Sécurité maximale :** Chiffrement SSL 256 bits et conformité PCI-DSS. Aucune donnée bancaire n'est conservée.`;
+      text = `**Ituze** propose des méthodes de paiement sécurisées et fiables :\n\n- **Mobile Money :** MTN Mobile Money (MoMo) & Airtel Money.\n- **Cartes bancaires :** Visa, Mastercard & American Express.\n- **Portefeuilles numériques :** PayPal.\n- **Sécurité :** Chiffrement SSL 256 bits conforme aux normes bancaires les plus strictes.`;
     } else if (lang === 'rw') {
-      text = `Uburyo bwo kwishyura butekanye bwemewe kuri **Tunga** :\n\n- **Mobile Money :** MTN Mobile Money (MoMo) & Airtel Money.\n- **Amakarita ya Banki :** Visa & Mastercard.\n- **Ibindi :** PayPal.\n- **Umutekano :** Kwishyura byose bikorwa mu mutekano usesuye hakoreshejwe ikoranabuhanga rya SSL 256-bit.`;
+      text = `Uburyo bwo kwishyura butekanye bwemewe kuri **Ituze** :\n\n- **Mobile Money :** MTN Mobile Money (MoMo) & Airtel Money.\n- **Amakarita ya Banki :** Visa na Mastercard.\n- **PayPal :** Yemerwa ku isi yose.\n- **Umutekano :** Kwishyura byose bikorwa mu mutekano usesuye hakoreshejwe ikoranabuhanga rya SSL 256-bit.`;
     } else if (lang === 'sw') {
-      text = `Njia salama za malipo zinazokubalika kwenye **Tunga** :\n\n- **Mobile Money :** MTN MoMo & Airtel Money.\n- **Kadi za Benki :** Visa na Mastercard.\n- **Nyinginezo :** PayPal.\n- **Usalama :** Malipo yote yanalindwa kwa mfumo salama wa 256-bit SSL encryption.`;
+      text = `Njia salama za malipo zinazokubalika kwenye **Ituze** :\n\n- **Mobile Money :** MTN MoMo na Airtel Money.\n- **Kadi za Benki :** Visa na Mastercard.\n- **PayPal :** Malipo ya kimataifa.\n- **Usalama :** Malipo yote yanalindwa kwa mfumo thabiti wa 256-bit SSL.`;
     } else {
-      text = `**Tunga** supports convenient, secure, and fast payment options:\n\n- **Mobile Money:** MTN MoMo & Airtel Money (instant East Africa checkout).\n- **Credit / Debit Cards:** Visa, Mastercard, and American Express.\n- **Digital Wallets:** PayPal and international payment gateways.\n- **Security Guarantee:** 256-bit SSL bank-grade encryption with PCI-DSS compliance. We never store raw card numbers.`;
+      text = `**Ituze** supports flexible and secure payment options:\n\n- **Mobile Money:** MTN MoMo & Airtel Money (instant East Africa checkout).\n- **Credit / Debit Cards:** Visa, Mastercard, and American Express.\n- **Digital Wallets:** PayPal checkout.\n- **Bank-Grade Security:** 256-bit SSL encryption. We never store raw card credentials.`;
     }
     return { content: text };
   }
@@ -395,67 +433,56 @@ function generateIntelligentTungaResponse(
     q.includes('service client') ||
     q.includes('ubufasha') ||
     q.includes('msaada') ||
-    q.includes('hotline') ||
-    q.includes('kigali');
+    q.includes('hotline');
 
   if (isContactIntent) {
     let text = '';
     if (lang === 'fr') {
-      text = `Notre équipe d'assistance **Tunga** est à votre écoute 24h/24 et 7j/7 :\n\n- **Email de support :** support@tunga.com\n- **Téléphone / WhatsApp :** +250 788 123 456\n- **Siège social :** KG 7 Ave, Kigali Heights, Kigali, Rwanda\n- **Centre d'assistance :** Rendez-vous sur notre [Page d'assistance](/account/support) pour ouvrir un ticket.`;
+      text = `Notre équipe d'assistance **Ituze** est à votre écoute 24h/24 et 7j/7 :\n\n- **Email de support :** hello@ituze.com\n- **Téléphone / WhatsApp :** +250 788 123 456\n- **Siège :** Kigali Heights, Boulevard de la Paix, Kigali, Rwanda\n- **Assistance en ligne :** Consultez notre [Page de contact](/contact) pour envoyer un message direct.`;
     } else if (lang === 'rw') {
-      text = `Abashinzwe kwakira abakiriya kuri **Tunga** bari hafi yawe amasaha 24 kuri 24 :\n\n- **Email :** support@tunga.com\n- **Telefone / WhatsApp :** +250 788 123 456\n- **Icyicaro gikuru :** KG 7 Ave, Kigali Heights, Kigali, Rwanda\n- **Gufungura itike :** Kanda kuri [Page y'ubufasha](/account/support) kugira ngo tugufashe byihuse.`;
+      text = `Abashinzwe kwakira abakiriya kuri **Ituze** bari hafi yawe igihe cyose :\n\n- **Email :** hello@ituze.com\n- **Telefone / WhatsApp :** +250 788 123 456\n- **Icyicaro :** Kigali Heights, Boulevard de la Paix, Kigali, Rwanda\n- **Ubufasha :** Sura [Page yo kutwandikira](/contact) kugira ngo tukugoboke aka kanya.`;
     } else if (lang === 'sw') {
-      text = `Wasaidizi wa **Tunga** wapo tayari kukuhudumia saa 24 kila siku :\n\n- **Barua pepe :** support@tunga.com\n- **Simu / WhatsApp :** +250 788 123 456\n- **Ofisi yetu :** KG 7 Ave, Kigali Heights, Kigali, Rwanda\n- **Tiketi ya msaada :** Tembelea [Ukurasa wa Msaada](/account/support) kuanzisha maombi.`;
+      text = `Wasaidizi wa **Ituze** wapo tayari kukuhudumia saa 24 kila siku :\n\n- **Barua pepe :** hello@ituze.com\n- **Simu / WhatsApp :** +250 788 123 456\n- **Ofisi :** Kigali Heights, Boulevard de la Paix, Kigali, Rwanda\n- **Msaada mtandaoni :** Tembelea [Ukurasa wa Mawasiliano](/contact) kutuma ujumbe wako.`;
     } else {
-      text = `Our dedicated **Tunga Customer Support** team is here for you 24/7:\n\n- **Email:** support@tunga.com / hello@tunga.com\n- **24/7 Phone & WhatsApp:** +250 788 123 456\n- **Headquarters:** KG 7 Ave, Kigali Heights, Kigali, Rwanda\n- **Support Ticket:** Visit our [Support Center](/account/support) to submit an inquiry anytime!`;
+      text = `Our dedicated **Ituze Support** team is here for you 24/7:\n\n- **Email:** hello@ituze.com\n- **Phone & WhatsApp:** +250 788 123 456\n- **Office:** Kigali Heights, Boulevard de la Paix, Kigali, Rwanda\n- **Online Inquiry:** Visit our [Contact Page](/contact) to reach out directly.`;
     }
     return { content: text };
   }
 
-  // 8. PRODUCTS, RECOMMENDATIONS & CATEGORY SEARCH
-  const isAudioQuery = q.includes('audio') || q.includes('headphone') || q.includes('earbud') || q.includes('sound') || q.includes('ecouteur');
-  const isWatchQuery = q.includes('watch') || q.includes('montre') || q.includes('chrono') || q.includes('wearable') || q.includes('isaha');
-  const isHomeQuery = q.includes('light') || q.includes('home') || q.includes('lumina') || q.includes('smart') || q.includes('itara');
-  const isChargerQuery = q.includes('charger') || q.includes('charge') || q.includes('battery') || q.includes('power') || q.includes('station');
-  const isGeneralProductQuery =
-    q.includes('product') ||
-    q.includes('popular') ||
-    q.includes('recommend') ||
-    q.includes('best') ||
-    q.includes('produit') ||
-    q.includes('populaire') ||
-    q.includes('bikunzwe') ||
-    q.includes('maarufu') ||
-    q.includes('item') ||
-    q.includes('buy') ||
-    q.includes('shop');
+  // 8. SPECIFIC PRODUCT DISCOVERY INTENT (Only triggered when the customer explicitly asks for products)
+  if (isExplicitProductInquiry(q)) {
+    const matchedProducts: ProductSummary[] = [];
 
-  if (isAudioQuery || isWatchQuery || isHomeQuery || isChargerQuery || isGeneralProductQuery) {
+    const isAudioQuery = q.includes('audio') || q.includes('headphone') || q.includes('earbud') || q.includes('sound') || q.includes('ecouteur');
+    const isWatchQuery = q.includes('watch') || q.includes('montre') || q.includes('chrono') || q.includes('wearable') || q.includes('isaha');
+    const isLightQuery = q.includes('light') || q.includes('lumina') || q.includes('lamp') || q.includes('itara');
+    const isPowerQuery = q.includes('power bank') || q.includes('charger') || q.includes('charge') || q.includes('battery') || q.includes('station');
+
     if (isAudioQuery) {
-      matchedProducts.push(...products.filter((p) => p.category?.includes('Audio') || p.name.includes('Sound') || p.name.includes('Pods')));
+      matchedProducts.push(...products.filter((p) => p.category?.toLowerCase().includes('audio') || p.name.toLowerCase().includes('headphones') || p.name.toLowerCase().includes('pods')));
     } else if (isWatchQuery) {
-      matchedProducts.push(...products.filter((p) => p.category?.includes('Wearables') || p.name.includes('Watch')));
-    } else if (isHomeQuery) {
-      matchedProducts.push(...products.filter((p) => p.category?.includes('Smart Home') || p.name.includes('Light')));
-    } else if (isChargerQuery) {
-      matchedProducts.push(...products.filter((p) => p.category?.includes('Accessories') || p.name.includes('Charge')));
-    }
-
-    if (matchedProducts.length === 0) {
+      matchedProducts.push(...products.filter((p) => p.category?.toLowerCase().includes('wearable') || p.name.toLowerCase().includes('watch')));
+    } else if (isLightQuery) {
+      matchedProducts.push(...products.filter((p) => p.category?.toLowerCase().includes('smart home') || p.name.toLowerCase().includes('light')));
+    } else if (isPowerQuery) {
+      matchedProducts.push(...products.filter((p) => p.category?.toLowerCase().includes('accessories') || p.name.toLowerCase().includes('power') || p.name.toLowerCase().includes('charge')));
+    } else {
       matchedProducts.push(...products.slice(0, 3));
     }
 
+    const finalProducts = matchedProducts.slice(0, 3);
+
     let text = '';
     if (lang === 'fr') {
-      text = `Voici les produits les plus recommandés et les mieux notés sur **Tunga** :\n\n- **Qualité premium certifiée :** Tous nos articles sont 100% originaux avec garantie fabricant.\n- **Garantie 30 jours :** Satisfait ou remboursé sous 30 jours.\n- **Livraison rapide :** Expédition prioritaire avec suivi en temps réel.\n\nCliquez sur un article ci-dessous pour voir la fiche détaillée ou l'ajouter à votre panier :`;
+      text = `Voici les produits correspondants disponibles actuellement dans notre catalogue **Ituze** :\n\n- **100% Originaux :** Tous nos appareils sont certifiés avec garantie.\n- **Livraison rapide :** Expédition prioritaire avec suivi.\n\nCliquez sur un article ci-dessous pour voir les détails ou l'ajouter à votre panier :`;
     } else if (lang === 'rw') {
-      text = `Dore bimwe mu bicuruzwa byiza kandi bikunzwe cyane kuri **Tunga** :\n\n- **Ubwiza budashidikanywaho :** Ibicuruzwa byose ni umwimerere bifite garanti.\n- **Gusubizwa amafaranga :** Iminsi 30 yo gusubiza igicuruzwa niba utanyuzwe.\n- **Kugezwaho byihuse :** Icyo utumije kigugeraho mu gihe gito.\n\nKanda ku gicuruzwa wifuza kureba ibirambuye cyangwa kugishyira mu kagorofani (cart) :`;
+      text = `Dore ibicuruzwa bihari bifitanye isano n'ibyo usabye muri **Ituze** :\n\n- **Umwimerere :** Ibicuruzwa byose ni umwimerere 100% bifite garanti.\n- **Kugezwaho byihuse :** Icyo uhisemo kikugeraho mu mutekano usesuye.\n\nKanda ku gicuruzwa kiri munsi kureba ibirambuye :`;
     } else if (lang === 'sw') {
-      text = `Hapa kuna bidhaa bora zaidi na maarufu zaidi kwenye **Tunga** kwa sasa :\n\n- **Ubora wa hali ya juu :** Bidhaa zote ni halisi 100% zikiwa na dhamana ya mtengenezaji.\n- **Dhamana ya siku 30 :** Rudishiwa pesa zako ndani ya siku 30 usiporidhika.\n- **Usafirishaji wa haraka :** Tunasafirisha kwa ufanisi na kukupa nambari ya ufuatiliaji.\n\nBofya bidhaa hapa chini kuangalia maelezo au kuweka kwenye gari lako :`;
+      text = `Hapa kuna bidhaa zilizopo kwenye duka la **Ituze** zinazolingana na ombi lako :\n\n- **Ubora Halisi :** Bidhaa zote ni halisi 100% zikiwa na dhamana rasmi.\n- **Usafirishaji wa Haraka :** Uwasilishaji salama na ufuatiliaji wa moja kwa moja.\n\nBofya bidhaa hapa chini kuangalia maelezo zaidi :`;
     } else {
-      text = `Here are our top-rated recommendations curated specially for you on **Tunga**:\n\n- **100% Genuine Quality:** Authentic certified devices with official brand warranty.\n- **30-Day Money Back:** Zero risk shopping with our 30-day return policy.\n- **Fast Dispatch:** Same-day or next-day warehouse dispatch with full insurance.\n\nTap any product card below to see full specs, customer reviews, or add to cart:`;
+      text = `Here are the matching in-stock products from our **Ituze** catalog:\n\n- **100% Genuine:** Certified devices with manufacturer warranty.\n- **Fast Dispatch:** Same-day warehouse dispatch with full insurance.\n\nTap any product card below to view specs or add to cart:`;
     }
-    return { content: text, matchedProducts: matchedProducts.slice(0, 3) };
+    return { content: text, matchedProducts: finalProducts };
   }
 
   // 9. ACCOUNT, WISHLIST, HOW TO ORDER
@@ -475,18 +502,18 @@ function generateIntelligentTungaResponse(
   if (isAccountOrGuide) {
     let text = '';
     if (lang === 'fr') {
-      text = `Gérer vos achats et votre compte **Tunga** est très simple :\n\n- **Créer un compte :** Cliquez sur [Créer un compte](/register) pour suivre vos commandes et sauvegarder vos adresses.\n- **Mot de passe oublié :** Utilisez le lien de réinitialisation sur la page de connexion.\n- **Panier & Favoris :** Vos articles sélectionnés restent enregistrés sur tous vos appareils.`;
+      text = `Gérer vos achats et votre compte **Ituze** est très simple :\n\n- **Créer un compte :** Cliquez sur [Créer un compte](/auth/register) pour suivre vos commandes et sauvegarder vos adresses.\n- **Mot de passe oublié :** Utilisez le lien de réinitialisation sur la page de connexion.\n- **Panier & Favoris :** Vos articles sélectionnés restent enregistrés sur tous vos appareils.`;
     } else if (lang === 'rw') {
-      text = `Gucunga ibyo uhaha na konti yawe kuri **Tunga** biroroshye cyane :\n\n- **Gufungura konti :** Kanda kuri [Gufungura konti](/register) kugira ngo ukurikirane ibyo watumije.\n- **Kwibagirwa ijambobanga :** Koresha inzira yo kongera gushyiraho irindi kuri page yo kwinjira.\n- **Agaseke n'Ibyo ukunda :** Ibicuruzwa wishimiye bibikwa neza kuri telefone na mudasobwa yawe.`;
+      text = `Gucunga ibyo uhaha na konti yawe kuri **Ituze** biroroshye cyane :\n\n- **Gufungura konti :** Kanda kuri [Gufungura konti](/auth/register) kugira ngo ukurikirane ibyo watumije.\n- **Kwibagirwa ijambobanga :** Koresha inzira yo kongera gushyiraho irindi kuri page yo kwinjira.\n- **Agaseke n'Ibyo ukunda :** Ibicuruzwa wishimiye bibikwa neza kuri telefone na mudasobwa yawe.`;
     } else if (lang === 'sw') {
-      text = `Kusimamia ununuzi na akaunti yako ya **Tunga** ni rahisi mno :\n\n- **Fungua akaunti :** Bofya [Fungua akaunti](/register) kufuatilia maagizo yako na kuhifadhi anwani zako.\n- **Umesahau neno la siri :** Tumia kiungo cha kubadilisha neno la siri kwenye ukurasa wa kuingia.\n- **Gari na Vipendwa :** Bidhaa ulizochagua zinahifadhiwa kwa usalama kwenye vifaa vyako vyote.`;
+      text = `Kusimamia ununuzi na akaunti yako ya **Ituze** ni rahisi mno :\n\n- **Fungua akaunti :** Bofya [Fungua akaunti](/auth/register) kufuatilia maagizo yako na kuhifadhi anwani zako.\n- **Umesahau neno la siri :** Tumia kiungo cha kubadilisha neno la siri kwenye ukurasa wa kuingia.\n- **Gari na Vipendwa :** Bidhaa ulizochagua zinahifadhiwa kwa usalama kwenye vifaa vyako vyote.`;
     } else {
-      text = `Managing your **Tunga** shopping experience is effortless:\n\n- **Create an Account:** Visit [Create Account](/register) to save shipping addresses and access one-click checkout.\n- **Reset Password:** Tap "Forgot Password" on the sign-in screen to receive a secure reset link.\n- **Wishlist & Cart:** Save your favorite items across devices anytime by clicking the heart icon.`;
+      text = `Managing your **Ituze** shopping experience is effortless:\n\n- **Create an Account:** Visit [Create Account](/auth/register) to save shipping addresses and access one-click checkout.\n- **Reset Password:** Tap "Forgot Password" on the sign-in screen to receive a secure reset link.\n- **Wishlist & Cart:** Save your favorite items across devices anytime by clicking the heart icon.`;
     }
     return { content: text };
   }
 
-  // 10. GREETING / CASUAL CHAT / IDENTITY
+  // 10. GREETING / CASUAL CHAT / IDENTITY (Answers directly WITHOUT showing product cards)
   const isGreeting =
     q.includes('hi') ||
     q.includes('hello') ||
@@ -498,7 +525,7 @@ function generateIntelligentTungaResponse(
     q.includes('habari') ||
     q.includes('hujambo') ||
     q.includes('who are you') ||
-    q.includes('tunga ai') ||
+    q.includes('ituze ai') ||
     q.includes('qui es-tu') ||
     q.includes('uri nde') ||
     q.includes('wewe ni nani');
@@ -506,33 +533,30 @@ function generateIntelligentTungaResponse(
   if (isGreeting) {
     let text = '';
     if (lang === 'fr') {
-      text = `Bonjour **${customerName}** ! Je suis **Tunga AI**, votre assistant d'achat personnel pour **Tunga**.\n\nJe peux vous aider à tout moment pour :\n- **Suivre vos commandes** et connaître les dates de livraison.\n- **Découvrir les meilleures offres**, codes promos et produits populaires.\n- **Répondre à toutes vos questions** sur la livraison, les retours et les paiements.\n\nQue puis-je faire pour vous aujourd'hui ?`;
+      text = `Bonjour **${customerName}** ! Je suis **Ituze AI**, l'assistant virtuel officiel de **Ituze**.\n\nJe suis à votre entière disposition pour répondre à toutes vos questions :\n- **Suivre une commande** ou vérifier un numéro de colis.\n- **Informations de livraison**, retours sous 30 jours et modes de paiement.\n- **Découvrir des produits** ou des codes promo actifs.\n\nQue puis-je faire pour vous aujourd'hui ?`;
     } else if (lang === 'rw') {
-      text = `Muraho **${customerName}** ! Ndi **Tunga AI**, umufasha wawe w'ikoranabuhanga muri **Tunga**.\n\nNiteguye kugufasha muri ibi bikurikira :\n- **Gukurikirana aho komande yawe igeze** n'igihe izagereraho.\n- **Kukwereka ibicuruzwa bikunzwe**, amapromosiyo na kodi zigabanya ibiciro.\n- **Gusubiza ibibazo byose** byerekeye kugeza ibintu ku bakiriya, kwishyura no gusubiza ibyo waguze.\n\nNdagufasha iki uyu munsi ?`;
+      text = `Muraho **${customerName}** ! Ndi **Ituze AI**, umufasha wawe w'ikoranabuhanga muri **Ituze**.\n\nNiteguye kugufasha mu bibazo byose waba ufite :\n- **Gukurikirana aho komande yawe igeze** n'igihe izagereraho.\n- **Amakuru yo kugezwaho ibicuruzwa**, gusubiza ibyo waguze no kwishyura.\n- **Gusubiza ibibazo byose** byerekeye amaduka n'amapromosiyo.\n\nNdagufasha iki uyu munsi ?`;
     } else if (lang === 'sw') {
-      text = `Habari **${customerName}** ! Mimi ni **Tunga AI**, msaidizi wako mkuu wa ununuzi kwenye **Tunga**.\n\nNinaweza kukusaidia mara moja kwa :\n- **Kufuatilia maagizo yako** na tarehe za kuwasili.\n- **Kupata bidhaa maarufu**, ofa na punguzo kabambe.\n- **Kujibu maswali yote** kuhusu usafirishaji, kurudisha bidhaa na njia za malipo.\n\nNawezaje kukusaidia leo ?`;
+      text = `Habari **${customerName}** ! Mimi ni **Ituze AI**, msaidizi rasmi wa **Ituze**.\n\nNinaweza kukusaidia kujibu maswali yako yote mara moja :\n- **Kufuatilia agizo lako** na kuangalia hali ya usafirishaji.\n- **Taarifa za usafirishaji**, kurudisha bidhaa ndani ya siku 30, na njia za malipo.\n- **Kupata majibu** kuhusu punguzo na huduma zetu.\n\nNawezaje kukusaidia leo ?`;
     } else {
-      text = `Hello **${customerName}**! 👋 I am **Tunga AI**, your personal AI concierge for **Tunga**.\n\nI am ready to help you with:\n- **Tracking Orders:** Live delivery updates, order numbers, and receipts.\n- **Product Discovery:** Recommendations, specs, and top deals on headphones, smartwatches, and smart devices.\n- **Store Information:** Shipping rates, 30-day return policy, mobile money payments, and discount codes.\n\nHow can I help you today?`;
+      text = `Hello **${customerName}**! 👋 I am **Ituze AI**, the official virtual assistant for **Ituze**.\n\nI am here to answer any questions you have:\n- **Track your orders** and check live delivery statuses.\n- **Shipping policies**, 30-day returns, and payment options.\n- **Store guidance**, coupons, or account assistance.\n\nHow can I help you today?`;
     }
-    return { content: text, matchedProducts: products.slice(0, 2) };
+    return { content: text };
   }
 
-  // 11. COMPREHENSIVE FALLBACK FOR ANY OTHER QUESTIONS (NEVER GIVES A BLANK OR VAGUE ANSWER)
+  // 11. GENERAL PROFESSIONAL FALLBACK (Answers question directly without unsolicited product cards)
   let text = '';
   if (lang === 'fr') {
-    text = `Merci pour votre question ! Voici les informations clés de **Tunga** pour vous orienter :\n\n- **Recherche de produits :** Parcourez notre vaste catalogue de produits électroniques et accessoires certifiés.\n- **Livraison rapide :** Gratuite à partir de $50 USD d'achats avec suivi en direct.\n- **Garantie 30 jours :** Retours sans tracas et remboursement sous 3 à 5 jours.\n- **Paiements locaux :** MTN MoMo, Airtel Money, Visa et Mastercard acceptés.\n- **Assistance 24/7 :** Contactez nos conseillers à support@tunga.com ou par téléphone au +250 788 123 456.\n\nN'hésitez pas à me donner plus de précisions sur ce que vous recherchez !`;
+    text = `Merci pour votre question ! Voici les informations clés de **Ituze** pour vous assister :\n\n- **Catalogue :** Électronique haut de gamme, accessoires et objets connectés 100% authentiques.\n- **Livraison gratuite :** Dès $50 USD d'achats avec expédition suivie.\n- **Garantie 30 jours :** Retours simples et remboursement garanti.\n- **Paiements sécurisés :** MTN MoMo, Airtel Money, Visa, Mastercard et PayPal.\n- **Assistance 24/7 :** Contactez-nous à hello@ituze.com ou au +250 788 123 456.\n\nN'hésitez pas à me donner plus de détails sur votre demande !`;
   } else if (lang === 'rw') {
-    text = `Urakoze ku kibazo cyawe ! Dore amakuru y'ingirakamaro kuri **Tunga** yakugoboka :\n\n- **Gushaka ibicuruzwa :** Reba ibikoresho by'ikoranabuhanga n'ibindi byiza byizewe.\n- **Kugezwaho byihuse :** Ku buntu kuri komande irengeje $50 USD.\n- **Garanti y'iminsi 30 :** Ufite uburenganzira bwo gusubiza igicuruzwa niba kidahuje n'ibyo wifuzaga.\n- **Kwishyura byoroshye :** MTN MoMo, Airtel Money, Visa na Mastercard.\n- **Ubufasha bw'abakiriya :** Twandikire kuri support@tunga.com cyangwa uhamagare +250 788 123 456.\n\nNyandikira neza icyo wifuza ngufashe aka kanya !`;
+    text = `Urakoze ku kibazo cyawe ! Dore amakuru y'ingirakamaro kuri **Ituze** yakugoboka :\n\n- **Ibicuruzwa :** Iby'ikoranabuhanga n'ibikoresho byizewe by'umwimerere 100%.\n- **Kugezwaho ku buntu :** Kuri buri komande irengeje $50 USD.\n- **Garanti y'iminsi 30 :** Gusubizwa amafaranga niba utanyuzwe.\n- **Kwishyura byoroshye :** MTN MoMo, Airtel Money, Visa, Mastercard na PayPal.\n- **Ubufasha :** Twandikire kuri hello@ituze.com cyangwa uhamagare +250 788 123 456.\n\nBaza ikindi kibazo cyose waba ufite ngufashe !`;
   } else if (lang === 'sw') {
-    text = `Asante kwa swali lako ! Hapa kuna taarifa muhimu za **Tunga** kukusaidia :\n\n- **Kutafuta bidhaa :** Vinjari orodha yetu ya bidhaa halisi za kielektroniki na vifaa vya kisasa.\n- **Usafirishaji wa haraka :** Bure kwa maagizo yote zaidi ya $50 USD.\n- **Dhamana ya siku 30 :** Rudisha bidhaa kwa urahisi na urejeshewe pesa zako.\n- **Malipo ya haraka :** MTN MoMo, Airtel Money, Visa na Mastercard.\n- **Msaada saa 24 :** Wasiliana nasi kupitia support@tunga.com au piga +250 788 123 456.\n\nNiambie maelezo zaidi ya kile unachohitaji nikusaidie !`;
+    text = `Asante kwa swali lako ! Hapa kuna taarifa muhimu za **Ituze** kukusaidia :\n\n- **Bidhaa zetu :** Vifaa vya kielektroniki vya kiwango cha juu vilivyo halisi 100%.\n- **Usafirishaji wa bure :** Kwa maagizo yote zaidi ya $50 USD.\n- **Dhamana ya siku 30 :** Kurudisha bidhaa kwa amani na uhakika.\n- **Malipo salama :** MTN MoMo, Airtel Money, Visa, Mastercard na PayPal.\n- **Msaada :** Wasiliana nasi kupitia hello@ituze.com au piga +250 788 123 456.\n\nNiambie swali lako lingine lolote nikusaidie mara moja !`;
   } else {
-    text = `Thanks for asking! Here is helpful store guidance from **Tunga** to assist you:\n\n- **Explore Products:** Browse our verified electronics, audio gear, smartwatches, and accessories.\n- **Fast Shipping:** Free standard shipping on orders over $50 USD with live tracking.\n- **30-Day Hassle-Free Returns:** Shop with peace of mind with our 30-day money-back guarantee.\n- **Multiple Payment Options:** MTN MoMo, Airtel Money, Visa, Mastercard, and PayPal.\n- **Need Special Help?** Our 24/7 team is reachable at support@tunga.com or +250 788 123 456.\n\nFeel free to ask any specific question about products, your orders, or our services!`;
+    text = `Thank you for your question! Here is helpful information about **Ituze** to assist you:\n\n- **Quality Guarantee:** 100% authentic curated electronics and lifestyle gear.\n- **Free Shipping:** Automatic free shipping on all orders over $50 USD.\n- **30-Day Hassle-Free Returns:** Full peace of mind with our return policy.\n- **Multiple Payment Options:** MTN MoMo, Airtel Money, Visa, Mastercard, and PayPal.\n- **24/7 Support:** Reach our team at hello@ituze.com or +250 788 123 456.\n\nPlease feel free to ask any specific question about your order, our policies, or our services!`;
   }
 
-  return {
-    content: text,
-    matchedProducts: products.slice(0, 2),
-  };
+  return { content: text };
 }
 
 export async function sendChatMessage(
@@ -555,7 +579,6 @@ export async function sendChatMessage(
   }
 
   // Set up a quick AbortController with a 2200ms timeout
-  // If external network is slow, it immediately falls back to our lightning-fast knowledge engine
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 2200);
 
@@ -576,13 +599,13 @@ export async function sendChatMessage(
           .join('\n')
       : 'No past orders.';
 
-    const systemDirective = `You are "Tunga AI", the smart personal shopping assistant for "Tunga" (https://tunga.store).
+    const systemDirective = `You are "Ituze AI", the official intelligent personal shopping assistant for "Ituze" (https://ituze.store).
 Language: Respond fluently in language code "${lang}".
 Customer: ${userId ? `Logged in as ${userName || 'Customer'}` : 'Guest'}
 Orders:\n${ordersContext}${specificOrder ? `\nFound order: #${specificOrder.order_number} (${specificOrder.status})` : ''}
-Products:\n${productsContext}
-Policies: Free shipping over $50. Standard shipping $5 (3-5 days). Express $12 (1-2 days). 30-day returns. MoMo, Airtel, Cards, PayPal. Coupons: WELCOME10 (10% off), SAVE20 (20% off >$150).
-Tone: Helpful, polite, structured with markdown bullet points.`;
+Products in catalog:\n${productsContext}
+Policies: Free shipping over $50. Standard shipping $4.99 (3-5 days). Express $12.99 (1-2 days). 30-day returns. MoMo, Airtel, Cards, PayPal. Active Coupons: WELCOME10 (10% off), SAVE20 (20% off >$150).
+IMPORTANT INSTRUCTION: Answer ONLY the question asked in a professional, courteous, clear, and direct manner. Do NOT attach or recommend unrequested products unless the customer specifically asks for product recommendations or items to buy.`;
 
     const contents = [
       {
@@ -607,24 +630,27 @@ Tone: Helpful, polite, structured with markdown bullet points.`;
       const data = await response.json();
       const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (replyText && replyText.trim().length > 0) {
-        // Collect companion product/order cards
+        // ONLY attach matched product cards if the user specifically asked for products or recommendations
         const matchedProducts: ProductSummary[] = [];
-        const lower = (message + ' ' + replyText).toLowerCase();
-        for (const p of popularProducts) {
-          if (lower.includes(p.name.toLowerCase()) || (lower.includes('popular') && matchedProducts.length < 3)) {
-            if (!matchedProducts.find((i) => i.id === p.id)) matchedProducts.push(p);
+        if (isExplicitProductInquiry(message)) {
+          const lower = (message + ' ' + replyText).toLowerCase();
+          for (const p of popularProducts) {
+            if (lower.includes(p.name.toLowerCase()) || lower.includes(p.slug.toLowerCase())) {
+              if (!matchedProducts.find((i) => i.id === p.id)) matchedProducts.push(p);
+            }
           }
         }
+
         const matchedOrders: OrderSummary[] = specificOrder
           ? [specificOrder]
-          : (lower.includes('order') || lower.includes('commande') || lower.includes('track')) && userOrders.length > 0
+          : (message.toLowerCase().includes('order') || message.toLowerCase().includes('commande') || message.toLowerCase().includes('track')) && userOrders.length > 0
           ? userOrders.slice(0, 3)
           : [];
 
         return {
           content: replyText,
-          matchedProducts: matchedProducts.slice(0, 3),
-          matchedOrders,
+          matchedProducts: matchedProducts.length > 0 ? matchedProducts.slice(0, 3) : undefined,
+          matchedOrders: matchedOrders.length > 0 ? matchedOrders : undefined,
         };
       }
     }
@@ -635,7 +661,7 @@ Tone: Helpful, polite, structured with markdown bullet points.`;
   }
 
   // Instant, intelligent, reliable response from our high-speed engine
-  return generateIntelligentTungaResponse(
+  return generateIntelligentItuzeResponse(
     message,
     popularProducts,
     userOrders,

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   ShoppingCart, Heart, Search, Menu, X, User, LogOut,
   Package, ChevronDown, Settings, LayoutDashboard, Bell,
-  Shield, Zap
+  Shield, Zap, ShoppingBag, Sparkles, Flame, Info, PhoneCall,
+  Home
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
@@ -16,6 +17,7 @@ export function Navbar() {
   const { itemCount, openCart } = useCart();
   const { t } = useT();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -60,11 +62,11 @@ export function Navbar() {
   };
 
   const navLinks = [
-    { to: '/shop', label: t.nav.shop },
-    { to: '/shop/category/new-arrivals', label: t.nav.newArrivals },
-    { to: '/shop/category/featured', label: t.nav.featured },
-    { to: '/about', label: t.nav.about },
-    { to: '/contact', label: t.nav.contact },
+    { to: '/shop', label: t.nav.shop, icon: ShoppingBag },
+    { to: '/shop/category/new-arrivals', label: t.nav.newArrivals, icon: Sparkles },
+    { to: '/shop/category/featured', label: t.nav.featured, icon: Flame },
+    { to: '/about', label: t.nav.about, icon: Info },
+    { to: '/contact', label: t.nav.contact, icon: PhoneCall },
   ];
 
   const displayName = profile
@@ -85,16 +87,17 @@ export function Navbar() {
             <span className="navbar-logo-text">{t.siteName}</span>
           </Link>
 
-          {/* ── Desktop Nav Links ── */}
+          {/* ── Desktop Nav Links with Modern Icons ── */}
           <div className="navbar-links hide-mobile" role="menubar">
-            {navLinks.map(link => (
+            {navLinks.map(({ to, label, icon: Icon }) => (
               <NavLink
-                key={link.to}
-                to={link.to}
+                key={to}
+                to={to}
                 className={({ isActive }) => cn('navbar-link', isActive && 'navbar-link-active')}
                 role="menuitem"
               >
-                {link.label}
+                <Icon size={15} className="navbar-link-icon" />
+                <span>{label}</span>
               </NavLink>
             ))}
           </div>
@@ -118,6 +121,8 @@ export function Navbar() {
 
             {/* Cart */}
             <button
+              type="button"
+              data-no-route-loader="true"
               className="navbar-icon-btn navbar-cart-btn"
               onClick={openCart}
               aria-label={`${t.cart.title}, ${itemCount}`}
@@ -139,50 +144,107 @@ export function Navbar() {
                   aria-expanded={userDropdownOpen}
                   aria-haspopup="menu"
                 >
-                  <div className="navbar-avatar">
-                    {profile?.avatar_url ? (
-                      <img src={profile.avatar_url} alt={displayName} />
-                    ) : (
-                      <span>{(profile?.first_name?.[0] ?? 'U').toUpperCase()}</span>
-                    )}
+                  <div className="navbar-user-avatar">
+                    <User size={16} />
                   </div>
                   <span className="navbar-user-name hide-mobile">{displayName}</span>
-                  <ChevronDown size={14} className={cn('navbar-chevron', userDropdownOpen && 'rotated')} />
+                  <ChevronDown size={14} className={cn('navbar-chevron', userDropdownOpen && 'rotate-180')} />
                 </button>
 
                 {userDropdownOpen && (
-                  <div className="dropdown-menu" role="menu">
-                    <div className="navbar-dropdown-header">
-                      <p className="navbar-dropdown-name">{displayName}</p>
-                      <p className="navbar-dropdown-email">{profile?.role}</p>
+                  <div className="dropdown-menu navbar-user-dropdown" role="menu">
+                    <div className="dropdown-header">
+                      <p className="dropdown-user-name">{displayName}</p>
+                      <p className="dropdown-user-email">{profile?.email}</p>
+                      {(isAdmin || isStaff) && (
+                        <span className="badge badge-primary badge-sm" style={{ marginTop: 'var(--space-1)' }}>
+                          {isAdmin ? 'Admin' : 'Staff'}
+                        </span>
+                      )}
                     </div>
-                    <div className="dropdown-separator" />
 
-                    <Link to="/account" className="dropdown-item" role="menuitem" onClick={() => setUserDropdownOpen(false)}>
-                      <LayoutDashboard size={16} />{t.nav.myDashboard}
-                    </Link>
-                    <Link to="/account/orders" className="dropdown-item" role="menuitem" onClick={() => setUserDropdownOpen(false)}>
-                      <Package size={16} />{t.nav.myOrders}
-                    </Link>
-                    <Link to="/account/notifications" className="dropdown-item" role="menuitem" onClick={() => setUserDropdownOpen(false)}>
-                      <Bell size={16} />{t.nav.notifications}
-                    </Link>
-                    <Link to="/account/profile" className="dropdown-item" role="menuitem" onClick={() => setUserDropdownOpen(false)}>
-                      <Settings size={16} />{t.nav.accountSettings}
+                    <div className="dropdown-divider" />
+
+                    <Link
+                      to="/account"
+                      className="dropdown-item"
+                      role="menuitem"
+                      onClick={() => setUserDropdownOpen(false)}
+                    >
+                      <LayoutDashboard size={16} />
+                      <span>{t.nav.myDashboard}</span>
                     </Link>
 
-                    {(isAdmin || isStaff) && (
+                    <Link
+                      to="/account/orders"
+                      className="dropdown-item"
+                      role="menuitem"
+                      onClick={() => setUserDropdownOpen(false)}
+                    >
+                      <Package size={16} />
+                      <span>{t.nav.myOrders}</span>
+                    </Link>
+
+                    <Link
+                      to="/account/notifications"
+                      className="dropdown-item"
+                      role="menuitem"
+                      onClick={() => setUserDropdownOpen(false)}
+                    >
+                      <Bell size={16} />
+                      <span>{t.nav.notifications}</span>
+                    </Link>
+
+                    <Link
+                      to="/account/profile"
+                      className="dropdown-item"
+                      role="menuitem"
+                      onClick={() => setUserDropdownOpen(false)}
+                    >
+                      <Settings size={16} />
+                      <span>{t.nav.accountSettings}</span>
+                    </Link>
+
+                    {(isAdmin || isStaff || localStorage.getItem('ituza_admin_mode') === 'true') ? (
                       <>
-                        <div className="dropdown-separator" />
-                        <Link to="/admin" className="dropdown-item" role="menuitem" onClick={() => setUserDropdownOpen(false)}>
-                          <Shield size={16} />{t.nav.adminPanel}
+                        <div className="dropdown-divider" />
+                        <Link
+                          to="/admin"
+                          className="dropdown-item dropdown-item-admin"
+                          role="menuitem"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          <Shield size={16} />
+                          <span>{t.nav.adminPanel}</span>
+                          <span className="badge badge-primary badge-sm" style={{ marginLeft: 'auto' }}>Admin</span>
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        <div className="dropdown-divider" />
+                        <Link
+                          to="/admin"
+                          className="dropdown-item"
+                          role="menuitem"
+                          onClick={() => setUserDropdownOpen(false)}
+                          style={{ color: 'var(--color-primary)' }}
+                        >
+                          <Shield size={16} />
+                          <span>{t.nav.adminPanel}</span>
+                          <span className="badge badge-neutral badge-sm" style={{ marginLeft: 'auto' }}>Portal</span>
                         </Link>
                       </>
                     )}
 
-                    <div className="dropdown-separator" />
-                    <button className="dropdown-item danger" role="menuitem" onClick={handleSignOut}>
-                      <LogOut size={16} />{t.nav.signOut}
+                    <div className="dropdown-divider" />
+
+                    <button
+                      className="dropdown-item dropdown-item-danger w-full text-left"
+                      role="menuitem"
+                      onClick={handleSignOut}
+                    >
+                      <LogOut size={16} />
+                      <span>{t.nav.signOut}</span>
                     </button>
                   </div>
                 )}
@@ -210,15 +272,16 @@ export function Navbar() {
         {mobileOpen && (
           <div className="navbar-mobile-menu" role="menu">
             <div className="container">
-              {navLinks.map(link => (
+              {navLinks.map(({ to, label, icon: Icon }) => (
                 <NavLink
-                  key={link.to}
-                  to={link.to}
+                  key={to}
+                  to={to}
                   className={({ isActive }) => cn('navbar-mobile-link', isActive && 'navbar-mobile-link-active')}
                   role="menuitem"
                   onClick={() => setMobileOpen(false)}
                 >
-                  {link.label}
+                  <Icon size={18} className="navbar-mobile-link-icon" />
+                  <span>{label}</span>
                 </NavLink>
               ))}
 
@@ -228,6 +291,28 @@ export function Navbar() {
                   Language
                 </p>
                 <LanguageSwitcher variant="inline" />
+              </div>
+
+              {/* Admin Panel Quick Access in Mobile Drawer */}
+              <div style={{ padding: 'var(--space-2) 0' }}>
+                <Link
+                  to="/admin"
+                  className="btn btn-secondary w-full"
+                  onClick={() => setMobileOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 'var(--space-2)',
+                    background: 'rgba(99, 102, 241, 0.08)',
+                    borderColor: 'rgba(99, 102, 241, 0.25)',
+                    color: 'var(--color-primary)',
+                    fontWeight: 600,
+                  }}
+                >
+                  <Shield size={16} />
+                  <span>{t.nav.adminPanel}</span>
+                </Link>
               </div>
 
               {!isAuthenticated && (
@@ -243,6 +328,87 @@ export function Navbar() {
             </div>
           </div>
         )}
+      </nav>
+
+      {/* ── Mobile Bottom Navigation Bar (Professional Mobile App Style) ── */}
+      <nav className="mobile-bottom-nav" aria-label="Mobile Bottom Navigation">
+        <NavLink
+          to="/"
+          className={({ isActive }) =>
+            cn('mobile-bottom-nav-item', isActive && 'mobile-bottom-nav-item-active')
+          }
+          end
+        >
+          <div className="mobile-bottom-nav-icon-wrap">
+            <Home size={20} />
+          </div>
+          <span className="mobile-bottom-nav-label">{t.common.home || 'Home'}</span>
+        </NavLink>
+
+        <NavLink
+          to="/shop"
+          className={({ isActive }) =>
+            cn(
+              'mobile-bottom-nav-item',
+              (isActive || location.pathname.startsWith('/shop') || location.pathname.startsWith('/product')) &&
+                'mobile-bottom-nav-item-active'
+            )
+          }
+        >
+          <div className="mobile-bottom-nav-icon-wrap">
+            <ShoppingBag size={20} />
+          </div>
+          <span className="mobile-bottom-nav-label">{t.nav.shop || 'Shop'}</span>
+        </NavLink>
+
+        <button
+          type="button"
+          data-no-route-loader="true"
+          className={cn('mobile-bottom-nav-item', searchOpen && 'mobile-bottom-nav-item-active')}
+          onClick={() => setSearchOpen(true)}
+          aria-label="Search products"
+        >
+          <div className="mobile-bottom-nav-icon-wrap">
+            <Search size={20} />
+          </div>
+          <span className="mobile-bottom-nav-label">{t.shop.search || 'Search'}</span>
+        </button>
+
+        <button
+          type="button"
+          data-no-route-loader="true"
+          className="mobile-bottom-nav-item"
+          onClick={openCart}
+          aria-label={`Cart with ${itemCount} items`}
+        >
+          <div className="mobile-bottom-nav-icon-wrap">
+            <ShoppingCart size={20} />
+            {itemCount > 0 && (
+              <span className="mobile-bottom-nav-badge">
+                {itemCount > 99 ? '99+' : itemCount}
+              </span>
+            )}
+          </div>
+          <span className="mobile-bottom-nav-label">{t.cart.title || 'Cart'}</span>
+        </button>
+
+        <NavLink
+          to={isAuthenticated ? '/account' : '/auth/login'}
+          className={({ isActive }) =>
+            cn(
+              'mobile-bottom-nav-item',
+              (isActive || location.pathname.startsWith('/account') || location.pathname.startsWith('/auth')) &&
+                'mobile-bottom-nav-item-active'
+            )
+          }
+        >
+          <div className="mobile-bottom-nav-icon-wrap">
+            <User size={20} />
+          </div>
+          <span className="mobile-bottom-nav-label">
+            {isAuthenticated ? (t.account.profile || 'Account') : (t.nav.signIn || 'Sign In')}
+          </span>
+        </NavLink>
       </nav>
 
       {/* ── Search Overlay ── */}

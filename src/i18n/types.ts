@@ -310,6 +310,30 @@ export interface Translations {
     active: string;
     inactive: string;
   };
+  // Product
+  product: {
+    addToCart: string;
+    addingToCart: string;
+    added: string;
+    featured: string;
+    inStock: string;
+    outOfStock: string;
+    lowStock: string;
+    onlyLeft: string;
+    viewDetails: string;
+    buyNow: string;
+    share: string;
+    wishlist: string;
+    description: string;
+    specifications: string;
+    reviews: string;
+    sku: string;
+    quantity: string;
+    available: string;
+    sale: string;
+    saveDiscount: string;
+    relatedProducts: string;
+  };
   // Footer
   footer: {
     tagline: string;

@@ -1,7 +1,7 @@
 import type { Translations } from './types';
 
 export const en: Translations = {
-  siteName: 'Tunga',
+  siteName: 'Ituze',
   nav: {
     shop: 'Shop', newArrivals: 'New Arrivals', featured: 'Featured',
     about: 'About', contact: 'Contact', signIn: 'Sign In', getStarted: 'Get Started',
@@ -45,7 +45,7 @@ export const en: Translations = {
     emailAddress: 'Email Address', password: 'Password', forgotPassword: 'Forgot password?',
     signIn: 'Sign In', signingIn: 'Signing in…', noAccount: "Don't have an account?",
     registerHere: 'Register here', createAccount: 'Create Account',
-    joinStorefront: 'Join Storefront today', firstName: 'First Name', lastName: 'Last Name',
+    joinStorefront: 'Join Ituze today', firstName: 'First Name', lastName: 'Last Name',
     confirmPassword: 'Confirm Password', registerBtn: 'Create Account', registering: 'Creating…',
     hasAccount: 'Already have an account?', signInHere: 'Sign in here',
     resetPassword: 'Reset Password', resetDesc: "Enter your email and we'll send a reset link.",
@@ -207,6 +207,29 @@ export const en: Translations = {
     or: 'or', setDefault: 'Set as Default', default: 'Default',
     active: 'Active', inactive: 'Inactive',
   },
+  product: {
+    addToCart: 'Add to Cart',
+    addingToCart: 'Adding…',
+    added: 'Added!',
+    featured: 'Featured',
+    inStock: 'In Stock',
+    outOfStock: 'Out of Stock',
+    lowStock: 'Low Stock',
+    onlyLeft: 'Only {count} left',
+    viewDetails: 'View Details',
+    buyNow: 'Buy Now',
+    share: 'Share',
+    wishlist: 'Wishlist',
+    description: 'Description',
+    specifications: 'Specifications',
+    reviews: 'Reviews',
+    sku: 'SKU',
+    quantity: 'Quantity',
+    available: 'available',
+    sale: 'Sale',
+    saveDiscount: 'Save',
+    relatedProducts: 'Related Products',
+  },
   footer: {
     tagline: 'Premium products delivered with speed, care, and excellence.',
     shopLinks: 'Shop', accountLinks: 'Account', companyLinks: 'Company', legalLinks: 'Legal',
@@ -216,9 +239,9 @@ export const en: Translations = {
     copyright: 'All rights reserved.', privacy: 'Privacy', terms: 'Terms', sitemap: 'Sitemap',
   },
   about: {
-    title: 'About Storefront', subtitle: "We're on a mission to make premium products accessible to everyone, everywhere.",
-    ourStory: 'Our Story', ourStoryTitle: 'Built for shoppers, by shoppers',
-    ourStoryDesc: 'Storefront was founded with a simple belief: great products should be easy to find, easy to buy, and delivered with care.',
+    title: 'About Ituze', subtitle: "We're on a mission to make premium products accessible to everyone, everywhere.",
+    ourStory: 'Our Story', ourStoryTitle: 'Built for discerning shoppers',
+    ourStoryDesc: 'Ituze was founded with a clear vision: curated, authentic products delivered with luxury care, seamless speed, and exceptional support.',
   },
   contact: {
     title: 'Contact Us', subtitle: "Have a question? We'd love to hear from you.",

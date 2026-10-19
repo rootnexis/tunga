@@ -11,10 +11,28 @@ import type { Product } from '@/types';
 // Promotional banner image
 const PROMO_IMG = 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1200&q=80&fit=crop';
 
+// 5 Curated ultra-high quality professional product showcase backgrounds
+const HERO_BACKGROUND_IMAGES = [
+  'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1920&q=85&auto=format&fit=crop', // Luxury Audio & Acoustics
+  'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1920&q=85&auto=format&fit=crop', // Titanium Chrono Smartwatch
+  'https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=1920&q=85&auto=format&fit=crop', // Ambient Lighting & Minimalist Studio
+  'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&q=85&auto=format&fit=crop', // Curated Luxury Apparel & Style
+  'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=1920&q=85&auto=format&fit=crop', // Ultra Wireless Earbuds & Tech
+];
+
 export default function HomePage() {
   const { t } = useT();
   const [featured, setFeatured] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
+
+  // Automatically cycle through background images every 3 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentHeroIndex((prev) => (prev + 1) % HERO_BACKGROUND_IMAGES.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
   const benefits = [
     { icon: Truck,       title: t.home.freeShipping,   desc: t.home.freeShippingDesc },
@@ -47,8 +65,11 @@ export default function HomePage() {
       .eq('is_active', true)
       .eq('is_archived', false)
       .limit(8)
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         setFeatured((data as unknown as Product[]) ?? []);
+        setIsLoading(false);
+      })
+      .catch(() => {
         setIsLoading(false);
       });
   }, []);
@@ -60,8 +81,27 @@ export default function HomePage() {
         description={t.home.heroDesc}
       />
 
-      {/* ── Hero ── */}
-      <section className="hero-section">
+      {/* ── Hero with Dynamic 3-second 5-image background & 80-90% dark overlay ── */}
+      <section className="hero-section" aria-label="Hero showcase">
+        {/* 5-image background carousel */}
+        <div className="hero-bg-slider" aria-hidden="true">
+          {HERO_BACKGROUND_IMAGES.map((imgUrl, idx) => (
+            <img
+              key={imgUrl}
+              src={imgUrl}
+              alt=""
+              className={`hero-bg-slide ${idx === currentHeroIndex ? 'active' : ''}`}
+              loading={idx === 0 ? 'eager' : 'lazy'}
+            />
+          ))}
+        </div>
+
+        {/* 80%-90% opacity black screen overlay */}
+        <div className="hero-black-overlay" aria-hidden="true" />
+
+        {/* Moving atmospheric luxury shadow glow */}
+        <div className="hero-moving-shadow" aria-hidden="true" />
+
         <div className="container">
           <div className="hero-inner">
             <div className="hero-eyebrow">
@@ -84,6 +124,20 @@ export default function HomePage() {
               </Link>
             </div>
           </div>
+        </div>
+
+        {/* Interactive slide indicators */}
+        <div className="hero-indicators" role="tablist" aria-label="Background image indicators">
+          {HERO_BACKGROUND_IMAGES.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className={`hero-indicator-dot ${idx === currentHeroIndex ? 'active' : ''}`}
+              onClick={() => setCurrentHeroIndex(idx)}
+              aria-label={`Go to background image ${idx + 1}`}
+              aria-selected={idx === currentHeroIndex}
+            />
+          ))}
         </div>
       </section>
 

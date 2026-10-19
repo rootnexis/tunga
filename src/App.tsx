@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import React, { lazy, Suspense } from 'react';
 import {
   createBrowserRouter,
   RouterProvider,
@@ -12,55 +12,82 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 
-import { CustomerLayout }     from '@/components/layout/CustomerLayout';
-import { AdminLayout }        from '@/components/layout/AdminLayout';
-import { RequireAuth }        from '@/components/shared/RequireAuth';
-import { RequireAdmin }       from '@/components/shared/RequireAdmin';
-import { Spinner }            from '@/components/shared/Spinner';
+import { CustomerLayout } from '@/components/layout/CustomerLayout';
+import { AdminLayout } from '@/components/layout/AdminLayout';
+import AccountLayout from '@/pages/AccountLayout';
+import { RequireAuth } from '@/components/shared/RequireAuth';
+import { RequireAdmin } from '@/components/shared/RequireAdmin';
+import { RouteErrorBoundary } from '@/components/shared/RouteErrorBoundary';
+import { ModernPageLoader } from '@/components/shared/ModernPageLoader';
+import { RouteProgressBar } from '@/components/shared/RouteProgressBar';
 
-// ── Lazy-loaded pages ──────────────────────────────────────────────────────
-const HomePage                = lazy(() => import('@/pages/HomePage'));
-const ShopPage                = lazy(() => import('@/pages/ShopPage'));
-const ProductPage             = lazy(() => import('@/pages/ProductPage'));
-const AboutPage               = lazy(() => import('@/pages/AboutPage'));
-const ContactPage             = lazy(() => import('@/pages/ContactPage'));
-const FaqPage                 = lazy(() => import('@/pages/FaqPage'));
-const TermsPage               = lazy(() => import('@/pages/TermsPage'));
-const PrivacyPage             = lazy(() => import('@/pages/PrivacyPage'));
-const ShippingPolicyPage      = lazy(() => import('@/pages/ShippingPolicyPage'));
-const ReturnsPolicyPage       = lazy(() => import('@/pages/ReturnsPolicyPage'));
-const NotFoundPage            = lazy(() => import('@/pages/NotFoundPage'));
+// ── Resilient Lazy Loading with Auto-Recovery ──────────────────────────────
+function safeLazy<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+) {
+  return lazy(async () => {
+    try {
+      return await factory();
+    } catch (err: any) {
+      console.warn('Dynamic import failed, retrying module load...', err);
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        return await factory();
+      } catch (retryErr) {
+        const reloadKey = `vite_retry_${window.location.pathname}`;
+        if (!sessionStorage.getItem(reloadKey)) {
+          sessionStorage.setItem(reloadKey, '1');
+          window.location.reload();
+          return new Promise(() => {});
+        }
+        throw retryErr;
+      }
+    }
+  });
+}
 
-const LoginPage               = lazy(() => import('@/pages/LoginPage'));
-const RegisterPage            = lazy(() => import('@/pages/RegisterPage'));
-const ForgotPasswordPage      = lazy(() => import('@/pages/ForgotPasswordPage'));
-const VerifyEmailPage         = lazy(() => import('@/pages/VerifyEmailPage'));
+// ── Lazy-loaded pages with automatic retry ──────────────────────────────────
+const HomePage                = safeLazy(() => import('@/pages/HomePage'));
+const ShopPage                = safeLazy(() => import('@/pages/ShopPage'));
+const ProductPage             = safeLazy(() => import('@/pages/ProductPage'));
+const AboutPage               = safeLazy(() => import('@/pages/AboutPage'));
+const ContactPage             = safeLazy(() => import('@/pages/ContactPage'));
+const FaqPage                 = safeLazy(() => import('@/pages/FaqPage'));
+const TermsPage               = safeLazy(() => import('@/pages/TermsPage'));
+const PrivacyPage             = safeLazy(() => import('@/pages/PrivacyPage'));
+const ShippingPolicyPage      = safeLazy(() => import('@/pages/ShippingPolicyPage'));
+const ReturnsPolicyPage       = safeLazy(() => import('@/pages/ReturnsPolicyPage'));
+const NotFoundPage            = safeLazy(() => import('@/pages/NotFoundPage'));
 
-const AccountLayout           = lazy(() => import('@/pages/AccountLayout'));
-const AccountDashboardPage    = lazy(() => import('@/pages/AccountDashboardPage'));
-const AccountOrdersPage       = lazy(() => import('@/pages/AccountOrdersPage'));
-const AccountOrderDetailPage  = lazy(() => import('@/pages/AccountOrderDetailPage'));
-const AccountWishlistPage     = lazy(() => import('@/pages/AccountWishlistPage'));
-const AccountAddressesPage    = lazy(() => import('@/pages/AccountAddressesPage'));
-const AccountNotificationsPage = lazy(() => import('@/pages/AccountNotificationsPage'));
-const AccountSupportPage      = lazy(() => import('@/pages/AccountSupportPage'));
-const AccountProfilePage      = lazy(() => import('@/pages/AccountProfilePage'));
+const LoginPage               = safeLazy(() => import('@/pages/LoginPage'));
+const RegisterPage            = safeLazy(() => import('@/pages/RegisterPage'));
+const ForgotPasswordPage      = safeLazy(() => import('@/pages/ForgotPasswordPage'));
+const VerifyEmailPage         = safeLazy(() => import('@/pages/VerifyEmailPage'));
 
-const CheckoutPage            = lazy(() => import('@/pages/CheckoutPage'));
+const AccountDashboardPage    = safeLazy(() => import('@/pages/AccountDashboardPage'));
+const AccountOrdersPage       = safeLazy(() => import('@/pages/AccountOrdersPage'));
+const AccountOrderDetailPage  = safeLazy(() => import('@/pages/AccountOrderDetailPage'));
+const AccountWishlistPage     = safeLazy(() => import('@/pages/AccountWishlistPage'));
+const AccountAddressesPage    = safeLazy(() => import('@/pages/AccountAddressesPage'));
+const AccountNotificationsPage = safeLazy(() => import('@/pages/AccountNotificationsPage'));
+const AccountSupportPage      = safeLazy(() => import('@/pages/AccountSupportPage'));
+const AccountProfilePage      = safeLazy(() => import('@/pages/AccountProfilePage'));
 
-const AdminDashboardPage      = lazy(() => import('@/pages/AdminDashboardPage'));
-const AdminProductsPage       = lazy(() => import('@/pages/AdminProductsPage'));
-const AdminProductFormPage    = lazy(() => import('@/pages/AdminProductFormPage'));
-const AdminOrdersPage         = lazy(() => import('@/pages/AdminOrdersPage'));
-const AdminOrderDetailPage    = lazy(() => import('@/pages/AdminOrderDetailPage'));
-const AdminCustomersPage      = lazy(() => import('@/pages/AdminCustomersPage'));
-const AdminCouponsPage        = lazy(() => import('@/pages/AdminCouponsPage'));
-const AdminDeliveryPage       = lazy(() => import('@/pages/AdminDeliveryPage'));
-const AdminInventoryPage      = lazy(() => import('@/pages/AdminInventoryPage'));
-const AdminReviewsPage        = lazy(() => import('@/pages/AdminReviewsPage'));
+const CheckoutPage            = safeLazy(() => import('@/pages/CheckoutPage'));
+
+const AdminDashboardPage      = safeLazy(() => import('@/pages/AdminDashboardPage'));
+const AdminProductsPage       = safeLazy(() => import('@/pages/AdminProductsPage'));
+const AdminProductFormPage    = safeLazy(() => import('@/pages/AdminProductFormPage'));
+const AdminOrdersPage         = safeLazy(() => import('@/pages/AdminOrdersPage'));
+const AdminOrderDetailPage    = safeLazy(() => import('@/pages/AdminOrderDetailPage'));
+const AdminCustomersPage      = safeLazy(() => import('@/pages/AdminCustomersPage'));
+const AdminCouponsPage        = safeLazy(() => import('@/pages/AdminCouponsPage'));
+const AdminDeliveryPage       = safeLazy(() => import('@/pages/AdminDeliveryPage'));
+const AdminInventoryPage      = safeLazy(() => import('@/pages/AdminInventoryPage'));
+const AdminReviewsPage        = safeLazy(() => import('@/pages/AdminReviewsPage'));
 
 // ── Fallback ───────────────────────────────────────────────────────────────
-const PageLoader = () => <Spinner fullPage label="Loading…" />;
+const PageLoader = () => <ModernPageLoader fullPage label="Preparing Ituze…" />;
 
 // ── Providers root — lives INSIDE the router so hooks work everywhere ──────
 function AppProviders() {
@@ -71,6 +98,7 @@ function AppProviders() {
           <AuthProvider>
             <CartProvider>
               <ScrollRestoration />
+              <RouteProgressBar />
               <Outlet />
             </CartProvider>
           </AuthProvider>
@@ -85,10 +113,12 @@ const router = createBrowserRouter([
   {
     // Root element — all providers live here so router hooks are available
     element: <AppProviders />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       // ── Public routes with CustomerLayout ──────────────────────────────
       {
         element: <CustomerLayout />,
+        errorElement: <RouteErrorBoundary />,
         children: [
           { index: true,                element: <Suspense fallback={<PageLoader />}><HomePage /></Suspense> },
           { path: 'shop',               element: <Suspense fallback={<PageLoader />}><ShopPage /></Suspense> },
@@ -105,9 +135,10 @@ const router = createBrowserRouter([
           // ── Account ───────────────────────────────────────────────────
           {
             path: 'account',
+            errorElement: <RouteErrorBoundary />,
             element: (
               <RequireAuth>
-                <Suspense fallback={<PageLoader />}><AccountLayout /></Suspense>
+                <AccountLayout />
               </RequireAuth>
             ),
             children: [
@@ -125,6 +156,7 @@ const router = createBrowserRouter([
           // ── Checkout ──────────────────────────────────────────────────
           {
             path: 'checkout',
+            errorElement: <RouteErrorBoundary />,
             element: (
               <RequireAuth>
                 <Suspense fallback={<PageLoader />}><CheckoutPage /></Suspense>
@@ -139,14 +171,15 @@ const router = createBrowserRouter([
       },
 
       // ── Auth routes (no layout) ─────────────────────────────────────
-      { path: 'auth/login',           element: <Suspense fallback={<PageLoader />}><LoginPage /></Suspense> },
-      { path: 'auth/register',        element: <Suspense fallback={<PageLoader />}><RegisterPage /></Suspense> },
-      { path: 'auth/forgot-password', element: <Suspense fallback={<PageLoader />}><ForgotPasswordPage /></Suspense> },
-      { path: 'auth/verify-email',    element: <Suspense fallback={<PageLoader />}><VerifyEmailPage /></Suspense> },
+      { path: 'auth/login',           errorElement: <RouteErrorBoundary />, element: <Suspense fallback={<PageLoader />}><LoginPage /></Suspense> },
+      { path: 'auth/register',        errorElement: <RouteErrorBoundary />, element: <Suspense fallback={<PageLoader />}><RegisterPage /></Suspense> },
+      { path: 'auth/forgot-password', errorElement: <RouteErrorBoundary />, element: <Suspense fallback={<PageLoader />}><ForgotPasswordPage /></Suspense> },
+      { path: 'auth/verify-email',    errorElement: <RouteErrorBoundary />, element: <Suspense fallback={<PageLoader />}><VerifyEmailPage /></Suspense> },
 
       // ── Admin ───────────────────────────────────────────────────────
       {
         path: 'admin',
+        errorElement: <RouteErrorBoundary />,
         element: (
           <RequireAuth>
             <RequireAdmin>

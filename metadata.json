@@ -1,0 +1,6 @@
+{
+  "name": "Ituze — Premium E-Commerce",
+  "description": "Shop the finest products with fast delivery, secure payments, and exceptional service on Ituze.",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

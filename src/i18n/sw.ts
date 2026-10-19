@@ -2,7 +2,7 @@ import type { Translations } from './types';
 
 // Kiswahili — Widely spoken across East Africa
 export const sw: Translations = {
-  siteName: 'Tunga',
+  siteName: 'Ituze',
   nav: {
     shop: 'Duka', newArrivals: 'Vipya', featured: 'Zilizoangaziwa',
     about: 'Kuhusu Sisi', contact: 'Wasiliana', signIn: 'Ingia', getStarted: 'Anza',
@@ -46,7 +46,7 @@ export const sw: Translations = {
     emailAddress: 'Anwani ya Barua Pepe', password: 'Nywila', forgotPassword: 'Umesahau nywila?',
     signIn: 'Ingia', signingIn: 'Kuingia…', noAccount: 'Huna akaunti?',
     registerHere: 'Jisajili hapa', createAccount: 'Fungua Akaunti',
-    joinStorefront: 'Jiunge na Storefront leo', firstName: 'Jina la Kwanza', lastName: 'Jina la Mwisho',
+    joinStorefront: 'Jiunge na Ituze leo', firstName: 'Jina la Kwanza', lastName: 'Jina la Mwisho',
     confirmPassword: 'Thibitisha Nywila', registerBtn: 'Fungua Akaunti', registering: 'Kufungua…',
     hasAccount: 'Una akaunti tayari?', signInHere: 'Ingia hapa',
     resetPassword: 'Weka Upya Nywila', resetDesc: 'Ingiza barua pepe yako na tutakutumia kiungo cha kuweka upya.',
@@ -208,6 +208,29 @@ export const sw: Translations = {
     or: 'au', setDefault: 'Weka kama Msingi', default: 'Msingi',
     active: 'Inatumika', inactive: 'Haifanyi kazi',
   },
+  product: {
+    addToCart: 'Ongeza kwenye Kikapu',
+    addingToCart: 'Inaongeza…',
+    added: 'Imeongezwa!',
+    featured: 'Iliyoangaziwa',
+    inStock: 'Ipo Stoo',
+    outOfStock: 'Imeisha Stoo',
+    lowStock: 'Hisa Ndogo',
+    onlyLeft: 'Zimebaki {count} tu',
+    viewDetails: 'Tazama Maelezo',
+    buyNow: 'Nunua Sasa',
+    share: 'Shiriki',
+    wishlist: 'Vipendwa',
+    description: 'Maelezo',
+    specifications: 'Vipengele',
+    reviews: 'Maoni',
+    sku: 'SKU',
+    quantity: 'Kiasi',
+    available: 'zinazopatikana',
+    sale: 'Ofa',
+    saveDiscount: 'Okoa',
+    relatedProducts: 'Bidhaa Zinazohusiana',
+  },
   footer: {
     tagline: 'Bidhaa bora zinazotolewa kwa kasi, utunzaji na ubora.',
     shopLinks: 'Duka', accountLinks: 'Akaunti', companyLinks: 'Kampuni', legalLinks: 'Kisheria',
@@ -217,9 +240,9 @@ export const sw: Translations = {
     copyright: 'Haki zote zimehifadhiwa.', privacy: 'Faragha', terms: 'Masharti', sitemap: 'Ramani ya Tovuti',
   },
   about: {
-    title: 'Kuhusu Storefront', subtitle: 'Tuko katika dhamira ya kufanya bidhaa bora zipatikane kwa kila mtu, kila mahali.',
+    title: 'Kuhusu Ituze', subtitle: 'Tuko katika dhamira ya kufanya bidhaa bora zipatikane kwa kila mtu, kila mahali.',
     ourStory: 'Hadithi Yetu', ourStoryTitle: 'Imejengwa na wanunuzi, kwa wanunuzi',
-    ourStoryDesc: 'Storefront ilianzishwa kwa imani rahisi: bidhaa nzuri zinapaswa kuwa rahisi kupata, kununua, na kutolewa kwa uangalifu.',
+    ourStoryDesc: 'Ituze ilianzishwa kwa imani rahisi: bidhaa nzuri zinapaswa kuwa rahisi kupata, kununua, na kutolewa kwa uangalifu.',
   },
   contact: {
     title: 'Wasiliana Nasi', subtitle: 'Una swali? Tungependa kukusikia.',

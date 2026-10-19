@@ -1,7 +1,7 @@
 import type { Translations } from './types';
 
 export const fr: Translations = {
-  siteName: 'Tunga',
+  siteName: 'Ituze',
   nav: {
     shop: 'Boutique', newArrivals: 'Nouveautés', featured: 'En vedette',
     about: 'À propos', contact: 'Contact', signIn: 'Se connecter', getStarted: 'Commencer',
@@ -45,7 +45,7 @@ export const fr: Translations = {
     emailAddress: 'Adresse e-mail', password: 'Mot de passe', forgotPassword: 'Mot de passe oublié ?',
     signIn: 'Se connecter', signingIn: 'Connexion…', noAccount: 'Pas encore de compte ?',
     registerHere: 'Inscrivez-vous ici', createAccount: 'Créer un compte',
-    joinStorefront: 'Rejoignez Storefront aujourd\'hui', firstName: 'Prénom', lastName: 'Nom',
+    joinStorefront: 'Rejoignez Ituze aujourd\'hui', firstName: 'Prénom', lastName: 'Nom',
     confirmPassword: 'Confirmer le mot de passe', registerBtn: 'Créer un compte', registering: 'Création…',
     hasAccount: 'Déjà un compte ?', signInHere: 'Connectez-vous ici',
     resetPassword: 'Réinitialiser le mot de passe', resetDesc: 'Entrez votre e-mail et nous vous enverrons un lien de réinitialisation.',
@@ -207,6 +207,29 @@ export const fr: Translations = {
     or: 'ou', setDefault: 'Définir par défaut', default: 'Par défaut',
     active: 'Actif', inactive: 'Inactif',
   },
+  product: {
+    addToCart: 'Ajouter au panier',
+    addingToCart: 'Ajout en cours…',
+    added: 'Ajouté !',
+    featured: 'En vedette',
+    inStock: 'En stock',
+    outOfStock: 'Rupture de stock',
+    lowStock: 'Stock faible',
+    onlyLeft: 'Plus que {count} restants',
+    viewDetails: 'Voir les détails',
+    buyNow: 'Acheter maintenant',
+    share: 'Partager',
+    wishlist: 'Liste d\'envies',
+    description: 'Description',
+    specifications: 'Spécifications',
+    reviews: 'Avis',
+    sku: 'UGS',
+    quantity: 'Quantité',
+    available: 'disponible(s)',
+    sale: 'Promo',
+    saveDiscount: 'Économisez',
+    relatedProducts: 'Produits similaires',
+  },
   footer: {
     tagline: 'Des produits premium livrés avec rapidité, soin et excellence.',
     shopLinks: 'Boutique', accountLinks: 'Compte', companyLinks: 'Entreprise', legalLinks: 'Légal',
@@ -216,9 +239,9 @@ export const fr: Translations = {
     copyright: 'Tous droits réservés.', privacy: 'Confidentialité', terms: 'Conditions', sitemap: 'Plan du site',
   },
   about: {
-    title: 'À propos de Storefront', subtitle: 'Notre mission est de rendre les produits premium accessibles à tous, partout.',
+    title: 'À propos d\'Ituze', subtitle: 'Notre mission est de rendre les produits premium accessibles à tous, partout.',
     ourStory: 'Notre histoire', ourStoryTitle: 'Créé par des acheteurs, pour des acheteurs',
-    ourStoryDesc: 'Storefront a été fondé avec une conviction simple : les bons produits doivent être faciles à trouver, à acheter et à recevoir avec soin.',
+    ourStoryDesc: 'Ituze a été fondé avec une conviction simple : les bons produits doivent être faciles à trouver, à acheter et à recevoir avec soin.',
   },
   contact: {
     title: 'Nous contacter', subtitle: 'Une question ? Nous serions ravis de vous entendre.',

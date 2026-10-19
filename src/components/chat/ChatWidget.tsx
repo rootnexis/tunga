@@ -322,7 +322,7 @@ export function ChatWidget() {
   });
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    const saved = sessionStorage.getItem(`tunga_chat_${lang}`);
+    const saved = sessionStorage.getItem(`ituze_chat_${lang}`);
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -375,7 +375,7 @@ export function ChatWidget() {
 
   // Persist messages in session storage per language
   useEffect(() => {
-    sessionStorage.setItem(`tunga_chat_${lang}`, JSON.stringify(messages));
+    sessionStorage.setItem(`ituze_chat_${lang}`, JSON.stringify(messages));
   }, [messages, lang]);
 
   // Auto-scroll to latest message
@@ -490,7 +490,7 @@ export function ChatWidget() {
 
   const handleReset = () => {
     setMessages([getInitialMessage()]);
-    sessionStorage.removeItem(`tunga_chat_${lang}`);
+    sessionStorage.removeItem(`ituze_chat_${lang}`);
   };
 
   const handleCopyMessage = (id: string, text: string) => {
@@ -727,7 +727,7 @@ export function ChatWidget() {
                   {msg.role === 'assistant' && (
                     <div className="chatbot-bubble-ai-pill">
                       <Sparkles size={10} className="chatbot-sparkle-spin" />
-                      <span>Tunga AI</span>
+                      <span>Ituze AI</span>
                     </div>
                   )}
                   {renderFormattedText(msg.content, msg.role === 'assistant' ? 'assistant' : 'user')}

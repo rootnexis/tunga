@@ -47,8 +47,19 @@ export default function AboutPage() {
       <section className="section" style={{ background: 'var(--slate-50)' }}>
         <div className="container">
           <div className="section-header" style={{ textAlign: 'center' }}>
-            <p className="section-eyebrow">Storefront</p>
+            <p className="section-eyebrow">{t.siteName}</p>
             <h2 className="section-title">Values & Excellence</h2>
+            <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--color-text-tertiary)' }}>
+              Engineered with precision and elegance by{' '}
+              <a
+                href="https://rootnexis.kesug.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
+              >
+                RootNexis
+              </a>
+            </p>
           </div>
           <div className="benefits-grid">
             {VALUES.map(({ icon: Icon, title, desc }) => (

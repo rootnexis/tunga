@@ -126,7 +126,7 @@ export default function ShopPage() {
 
   return (
     <>
-      <PageSeo title={`${pageTitle} — ${t.nav.shop}`} description={`Browse ${pageTitle.toLowerCase()} at Storefront.`} />
+      <PageSeo title={`${pageTitle} — ${t.nav.shop}`} description={`Browse ${pageTitle.toLowerCase()} at ${t.siteName}.`} />
 
       {/* Header */}
       <div className="shop-header">

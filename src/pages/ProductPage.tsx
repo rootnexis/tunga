@@ -17,7 +17,6 @@ export default function ProductPage() {
   const { t } = useT();
   const { slug } = useParams<{ slug: string }>();
   const { addItem } = useCart();
-  const { isAuthenticated } = useAuth();
   const { success } = useToast();
   const navigate = useNavigate();
 
@@ -44,7 +43,7 @@ export default function ProductPage() {
       `).eq('slug', slug).single(),
       supabase.from('reviews').select(`*, profile:profiles(first_name, last_name)`)
         .eq('product_slug', slug).eq('is_approved', true).order('created_at', { ascending: false }).limit(10),
-    ]).then(([{ data: p }, { data: r }]) => {
+    ]).then(([{ data: p }, { data: r }]: any) => {
       if (!p) { navigate('/404'); return; }
       const prod = p as unknown as Product;
       setProduct(prod);
@@ -56,10 +55,12 @@ export default function ProductPage() {
           images:product_images(id, url, alt_text, is_primary, sort_order),
           inventory(quantity_available, low_stock_threshold),
           category:categories(id, name, slug)
-        `).eq('category_id', prod.category_id).neq('id', prod.id).eq('is_active', true).limit(4).then(({ data: rel }) => {
+        `).eq('category_id', prod.category_id).neq('id', prod.id).eq('is_active', true).limit(4).then(({ data: rel }: any) => {
           setRelated((rel as unknown as Product[]) ?? []);
-        });
+        }).catch(() => {});
       }
+      setIsLoading(false);
+    }).catch(() => {
       setIsLoading(false);
     });
   }, [slug, navigate]);
@@ -80,11 +81,10 @@ export default function ProductPage() {
     : [];
 
   const handleAddToCart = async () => {
-    if (!isAuthenticated) { navigate('/auth/login'); return; }
     setAdding(true);
     await addItem(product.id, qty, selectedVariant?.id ?? null);
     setAdding(false);
-    success('Added to cart', `${product.name} × ${qty}`);
+    success(t.product.added, `${product.name} × ${qty}`);
   };
 
   const PLACEHOLDER = 'data:image/svg+xml;charset=utf-8,' +
@@ -94,7 +94,7 @@ export default function ProductPage() {
     <>
       <PageSeo
         title={product.name}
-        description={product.short_description ?? product.description ?? `Buy ${product.name} at Storefront.`}
+        description={product.short_description ?? product.description ?? `Buy ${product.name} at ${t.siteName}.`}
       />
 
       <div className="product-page">
@@ -161,9 +161,9 @@ export default function ProductPage() {
 
               <div className={`product-stock-badge ${stockStatus.replace('_', '-')}`}>
                 <div className="product-stock-dot" />
-                {stockStatus === 'in_stock' ? 'In Stock' : stockStatus === 'low_stock'
-                  ? `Only ${product.inventory?.quantity_available} left`
-                  : 'Out of Stock'}
+                {stockStatus === 'in_stock' ? t.product.inStock : stockStatus === 'low_stock'
+                  ? t.product.onlyLeft.replace('{count}', String(product.inventory?.quantity_available))
+                  : t.product.outOfStock}
               </div>
 
               {/* Variants */}
@@ -206,20 +206,22 @@ export default function ProductPage() {
                     </button>
                   </div>
                   <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-tertiary)' }}>
-                    {product.inventory?.quantity_available} available
+                    {product.inventory?.quantity_available} {t.product.available}
                   </span>
                 </div>
               )}
 
-              <div className="product-actions">
+              <div className="product-actions" data-no-route-loader="true">
                 <button
+                  type="button"
+                  data-no-route-loader="true"
                   className="btn btn-primary btn-lg"
                   onClick={handleAddToCart}
                   disabled={!inStock || adding}
                   style={{ flex: 2 }}
                 >
                   {adding ? <Check size={18} /> : <ShoppingCart size={18} />}
-                  {!inStock ? 'Out of Stock' : adding ? 'Added!' : 'Add to Cart'}
+                  {!inStock ? t.product.outOfStock : adding ? t.product.added : t.product.addToCart}
                 </button>
                 <button className="btn btn-secondary btn-lg btn-icon" aria-label="Add to wishlist">
                   <Heart size={18} />
@@ -247,7 +249,7 @@ export default function ProductPage() {
           <div className="product-tabs">
             {(['description', 'specs', 'reviews'] as const).map(tab => (
               <button key={tab} className={`product-tab${activeTab === tab ? ' active' : ''}`} onClick={() => setActiveTab(tab)}>
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab === 'description' ? t.product.description : tab === 'specs' ? t.product.specifications : t.product.reviews}
                 {tab === 'reviews' && reviews.length > 0 && ` (${reviews.length})`}
               </button>
             ))}
@@ -303,7 +305,7 @@ export default function ProductPage() {
           {/* Related */}
           {related.length > 0 && (
             <section style={{ marginBottom: 'var(--space-8)' }}>
-              <h2 className="section-title" style={{ marginBottom: 'var(--space-6)' }}>You might also like</h2>
+              <h2 className="section-title" style={{ marginBottom: 'var(--space-6)' }}>{t.product.relatedProducts}</h2>
               <div className="grid-products">
                 {related.map(p => <ProductCard key={p.id} product={p} />)}
               </div>

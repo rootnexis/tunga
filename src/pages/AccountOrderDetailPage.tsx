@@ -26,8 +26,11 @@ export default function AccountOrderDetailPage() {
       .eq('id', id)
       .eq('user_id', user.id)
       .single()
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         setOrder(data as Order);
+        setIsLoading(false);
+      })
+      .catch(() => {
         setIsLoading(false);
       });
   }, [id, user]);

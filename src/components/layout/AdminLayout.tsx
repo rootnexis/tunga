@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import {
   LayoutGrid, Package, ShoppingCart, Users, Ticket,
   Truck, Store, Menu, X, LogOut, ChevronRight, Warehouse, Star,
@@ -49,10 +49,10 @@ export function AdminLayout() {
       {/* Sidebar */}
       <aside className={cn('admin-sidebar', sidebarOpen && 'admin-sidebar-open')}>
         <div className="admin-sidebar-header">
-          <div className="admin-logo">
+          <Link to="/" className="admin-logo" style={{ textDecoration: 'none', color: 'inherit' }} title="Go to Storefront">
             <div className="admin-logo-icon"><Store size={18} /></div>
-            <span className="admin-logo-text">Tunga</span>
-          </div>
+            <span className="admin-logo-text">Ituze</span>
+          </Link>
           <span className="admin-badge">Admin</span>
         </div>
 
@@ -163,8 +163,31 @@ export function AdminLayout() {
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <div className="admin-topbar-logo">
-            <Store size={16} />
-            <span>Tunga Admin</span>
+            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'inherit', textDecoration: 'none' }}>
+              <Store size={16} />
+              <span>Ituze Admin</span>
+            </Link>
+          </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            <Link
+              to="/"
+              className="btn btn-ghost btn-sm"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 'var(--text-xs)',
+                fontWeight: 600,
+                color: 'var(--color-primary)',
+                background: 'rgba(99, 102, 241, 0.08)',
+                padding: '6px 12px',
+                borderRadius: 'var(--radius-lg)',
+                textDecoration: 'none',
+              }}
+            >
+              <Store size={14} />
+              <span>View Storefront</span>
+            </Link>
           </div>
         </header>
 

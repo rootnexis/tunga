@@ -2,7 +2,7 @@ import type { Translations } from './types';
 
 // Kinyarwanda — Official language of Rwanda
 export const rw: Translations = {
-  siteName: 'Tunga',
+  siteName: 'Ituze',
   nav: {
     shop: 'Iduka', newArrivals: 'Ibicuruzwa Bishya', featured: 'Byihariye',
     about: 'Abo Turi Bo', contact: 'Twandikire', signIn: 'Injira', getStarted: 'Tangira',
@@ -46,7 +46,7 @@ export const rw: Translations = {
     emailAddress: 'Aderesi ya Imeri', password: 'Ijambo ry\'Ibanga', forgotPassword: 'Wibagiwe ijambo ry\'ibanga?',
     signIn: 'Injira', signingIn: 'Kwinjira…', noAccount: 'Nta konti ufite?',
     registerHere: 'Iyandikishe hano', createAccount: 'Fungura Konti',
-    joinStorefront: 'Injira muri Storefront uyu munsi', firstName: 'Izina rya Mbere', lastName: 'Izina rya Nyuma',
+    joinStorefront: 'Injira muri Ituze uyu munsi', firstName: 'Izina rya Mbere', lastName: 'Izina rya Nyuma',
     confirmPassword: 'Emeza Ijambo ry\'Ibanga', registerBtn: 'Fungura Konti', registering: 'Gufungura…',
     hasAccount: 'Usanzwe ufite konti?', signInHere: 'Injira hano',
     resetPassword: 'Hindura Ijambo ry\'Ibanga', resetDesc: 'Andika imeri yawe tuzoguhereze umunyururu wo guhindura.',
@@ -208,6 +208,29 @@ export const rw: Translations = {
     or: 'cyangwa', setDefault: 'Shira nk\'Isanzwe', default: 'Isanzwe',
     active: 'Birakora', inactive: 'Ntibikorwa',
   },
+  product: {
+    addToCart: 'Shyira mu Kagorofani',
+    addingToCart: 'Birimo gushyirwamo…',
+    added: 'Byashyizwemo!',
+    featured: 'Ibyatoranyijwe',
+    inStock: 'Biri mu bubiko',
+    outOfStock: 'Byashize mu bubiko',
+    lowStock: 'Bisigaye bicye',
+    onlyLeft: 'Bisigaye {count} gusa',
+    viewDetails: 'Reba Birambuye',
+    buyNow: 'Gura Ako Kanya',
+    share: 'Sangiza',
+    wishlist: 'Ibyo nifuza',
+    description: 'Ibisobanuro',
+    specifications: 'Ibiranga Igicuruzwa',
+    reviews: 'Ibitekerezo',
+    sku: 'Kode y\'igicuruzwa',
+    quantity: 'Ingano',
+    available: 'bihari',
+    sale: 'Kugabanyirizwa',
+    saveDiscount: 'Uzigamye',
+    relatedProducts: 'Ibicuruzwa bifitanye isano',
+  },
   footer: {
     tagline: 'Ibicuruzwa byiza biragezwa vuba, n\'ubwitange n\'ubwiza.',
     shopLinks: 'Iduka', accountLinks: 'Konti', companyLinks: 'Sosiyete', legalLinks: 'Amategeko',
@@ -217,9 +240,9 @@ export const rw: Translations = {
     copyright: 'Uburenganzira bwose bwarakingijwe.', privacy: "ibinjyanye n'umutekano kumakuru", terms: 'Amasezerano', sitemap: 'Ikarita y\'Urubuga',
   },
   about: {
-    title: 'Ibyerekeye Storefront', subtitle: 'Intego yacu ni ugufasha abantu bose kubona ibicuruzwa byiza aho bari hose.',
+    title: 'Ibyerekeye Ituze', subtitle: 'Intego yacu ni ugufasha abantu bose kubona ibicuruzwa byiza aho bari hose.',
     ourStory: 'Inkuru Yacu', ourStoryTitle: 'Yubakiwe n\'abakiriya, ku bakiriya',
-    ourStoryDesc: 'Storefront yashyizweho n\'icyizere gito: ibicuruzwa byiza bikwiye kuba byoroshye kubona, kugura, no gutwara neza.',
+    ourStoryDesc: 'Ituze yashyizweho n\'icyizere gito: ibicuruzwa byiza bikwiye kuba byoroshye kubona, kugura, no gutwara neza.',
   },
   contact: {
     title: 'Twandikire', subtitle: 'Ufite ikibazo? Twishimiye kukumva.',

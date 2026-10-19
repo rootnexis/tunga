@@ -33,9 +33,11 @@ export default function AccountOrdersPage() {
       .order('created_at', { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
     if (search) q = q.ilike('order_number', `%${search}%`);
-    q.then(({ data, count }) => {
+    q.then(({ data, count }: any) => {
       setOrders((data as Order[]) ?? []);
       setTotal(count ?? 0);
+      setIsLoading(false);
+    }).catch(() => {
       setIsLoading(false);
     });
   }, [user, page, search]);

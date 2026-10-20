@@ -98,7 +98,7 @@ export default function RegisterPage() {
             <div className="login-banner-image-wrap">
               <img
                 src={loginIllustration}
-                alt="Ituza Experience"
+                alt="Ituze Experience"
                 className="login-banner-img"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src =

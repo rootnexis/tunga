@@ -97,7 +97,7 @@ export function RequireAdmin({ children }: Props) {
           lineHeight: 'var(--leading-relaxed)',
           marginBottom: 'var(--space-6)',
         }}>
-          Access the Ituza admin dashboard to add products, adjust inventory, manage orders, and run your online store.
+          Access the Ituze admin dashboard to add products, adjust inventory, manage orders, and run your online store.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>

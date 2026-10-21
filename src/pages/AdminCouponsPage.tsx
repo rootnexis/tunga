@@ -154,7 +154,7 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
             </div>
 
             {/* Type + Value */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+            <div className="admin-form-row-2col">
               <div className="form-group">
                 <label className="form-label" htmlFor="coupon-type">Type <span className="form-required">*</span></label>
                 <select
@@ -192,7 +192,7 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
             </div>
 
             {/* Min order / Max discount */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+            <div className="admin-form-row-2col">
               <div className="form-group">
                 <label className="form-label" htmlFor="coupon-min">
                   Min order <span className="form-label-optional">($)</span>
@@ -228,7 +228,7 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
             </div>
 
             {/* Uses */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+            <div className="admin-form-row-2col">
               <div className="form-group">
                 <label className="form-label" htmlFor="coupon-max-uses">
                   Max uses <span className="form-label-optional">(total)</span>
@@ -259,7 +259,7 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
             </div>
 
             {/* Dates */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+            <div className="admin-form-row-2col">
               <div className="form-group">
                 <label className="form-label" htmlFor="coupon-starts">Starts at</label>
                 <input

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, ShoppingBag, Users, DollarSign, ArrowRight, Package } from 'lucide-react';
+import { ShoppingBag, Users, DollarSign, ArrowRight, Package } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { PageSeo } from '@/components/shared/PageSeo';
 import { Spinner } from '@/components/shared/Spinner';

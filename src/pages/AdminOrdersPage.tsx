@@ -57,8 +57,8 @@ export default function AdminOrdersPage() {
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="admin-table-toolbar">
-          <div className="admin-table-toolbar-left">
-            <div className="input-group" style={{ width: 260 }}>
+          <div className="admin-table-toolbar-left" style={{ width: '100%' }}>
+            <div className="input-group" style={{ width: '100%', maxWidth: 260 }}>
               <Search size={14} className="input-icon-left" />
               <input type="search" className="input input-sm" placeholder="Search order #…" value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }} style={{ paddingLeft: 'var(--space-9)' }} />

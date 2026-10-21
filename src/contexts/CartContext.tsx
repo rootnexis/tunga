@@ -48,7 +48,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const userRef = useRef(user);
-  userRef.current = user;
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   const fetchCart = useCallback(async (userId: string) => {
     setIsLoading(true);

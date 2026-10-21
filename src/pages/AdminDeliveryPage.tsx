@@ -276,7 +276,7 @@ function MethodModal({ isOpen, onClose, onSave, editing, zones }: MethodModalPro
             </div>
 
             {/* Fees */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+            <div className="admin-form-row-2col">
               <div className="form-group">
                 <label className="form-label" htmlFor="method-fee">
                   Base Fee <span className="form-label-optional">($)</span> <span className="form-required">*</span>
@@ -310,7 +310,7 @@ function MethodModal({ isOpen, onClose, onSave, editing, zones }: MethodModalPro
             </div>
 
             {/* Estimated days */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+            <div className="admin-form-row-2col">
               <div className="form-group">
                 <label className="form-label" htmlFor="method-days-min">Min Days</label>
                 <input

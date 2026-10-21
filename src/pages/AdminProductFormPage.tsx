@@ -378,10 +378,10 @@ export default function AdminProductFormPage() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 'var(--space-5)', alignItems: 'start' }}>
+        <div className="admin-product-form-grid">
 
           {/* ── Left column ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', minWidth: 0, width: '100%' }}>
 
             {/* Basic Info */}
             <div className="card">
@@ -392,7 +392,7 @@ export default function AdminProductFormPage() {
                 <input className="input" value={form.name} onChange={onNameChange} placeholder={tf.productNamePlaceholder} required />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+              <div className="admin-form-row-2col">
                 <div className="form-group">
                   <label className="form-label">{tf.slug} <span className="form-required">*</span></label>
                   <input className="input" value={form.slug}
@@ -425,7 +425,7 @@ export default function AdminProductFormPage() {
             {/* Pricing */}
             <div className="card">
               <h2 className="card-section-title">{tf.pricing}</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-4)' }}>
+              <div className="admin-form-row-3col">
                 <div className="form-group">
                   <label className="form-label">{tf.basePrice} <span className="form-required">*</span></label>
                   <div className="input-group">
@@ -548,7 +548,7 @@ export default function AdminProductFormPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                   {variants.map((v, i) => (
                     <div key={v._key} style={{ background: 'var(--color-surface-raised)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', border: '1px solid var(--color-border)' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 120px', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
+                      <div className="admin-variant-row-top">
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label className="form-label">{tf.variantName}</label>
                           <input className="input input-sm" value={v.name} placeholder={tf.variantNamePlaceholder}
@@ -565,7 +565,7 @@ export default function AdminProductFormPage() {
                             onChange={e => setVariants(prev => prev.map((x, j) => j === i ? { ...x, price_modifier: e.target.value } : x))} />
                         </div>
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 'var(--space-3)', alignItems: 'center' }}>
+                      <div className="admin-variant-row-bottom">
                         <div className="form-group" style={{ marginBottom: 0 }}>
                           <label className="form-label">{tf.attributes} <span className="form-label-optional">({tf.attributesJson})</span></label>
                           <input className="input input-sm" value={v.attributes} placeholder={tf.attributesPlaceholder}
@@ -590,7 +590,7 @@ export default function AdminProductFormPage() {
             {/* Shipping */}
             <div className="card">
               <h2 className="card-section-title">{tf.shipping}</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-4)' }}>
+              <div className="admin-form-row-4col">
                 <div className="form-group">
                   <label className="form-label">{tf.weight}</label>
                   <input type="number" className="input" value={form.weight_kg} min="0" step="0.001"
@@ -617,7 +617,7 @@ export default function AdminProductFormPage() {
           </div>{/* end left column */}
 
           {/* ── Right sidebar ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', position: 'sticky', top: 'calc(var(--admin-topbar-h, 56px) + var(--space-4))' }}>
+          <div className="admin-product-form-sidebar">
 
             {/* Status */}
             <div className="card">

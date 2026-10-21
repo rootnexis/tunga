@@ -46,7 +46,12 @@ export default function AdminOrderDetailPage() {
   const updateStatus = async (newStatus: OrderStatus) => {
     if (!order || !user) return;
     setUpdating(true);
-    await supabase.from('orders').update({ status: newStatus }).eq('id', order.id);
+    const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', order.id);
+    if (error) {
+      toastError('Failed to update status', error.message);
+      setUpdating(false);
+      return;
+    }
     await supabase.from('order_status_history').insert({
       order_id: order.id, from_status: order.status, to_status: newStatus, actor_id: user.id, note: note || null,
     });
@@ -76,7 +81,7 @@ export default function AdminOrderDetailPage() {
         <span className={`badge badge-lg ${ORDER_STATUS_COLORS[order.status]}`}>{ORDER_STATUS_LABELS[order.status]}</span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-5)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 'var(--space-5)' }}>
         {/* Status Control */}
         <div className="card">
           <h2 style={{ fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-4)' }}>Update Status</h2>

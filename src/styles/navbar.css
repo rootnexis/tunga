@@ -762,9 +762,10 @@
     padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  /* Float Chatbot widget above bottom bar */
+  /* Float Chatbot widget safely above bottom bar without obscuring any label or icon */
+  .chatbot-launcher,
   .chat-widget-trigger {
-    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 

@@ -62,7 +62,7 @@ export default function AdminCustomersPage() {
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="admin-table-toolbar">
-          <div className="input-group" style={{ width: 280 }}>
+          <div className="input-group" style={{ width: '100%', maxWidth: 280 }}>
             <Search size={14} className="input-icon-left" />
             <input type="search" className="input input-sm" placeholder="Search by name…" value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }} style={{ paddingLeft: 'var(--space-9)' }} />

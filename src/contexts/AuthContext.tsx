@@ -14,6 +14,7 @@ interface AuthContextValue {
   isStaff: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: string | null }>;
+  signInWithGoogle: (email?: string, name?: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -108,6 +109,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null };
   };
 
+  const signInWithGoogle = async (googleEmail?: string, displayName?: string): Promise<{ error: string | null }> => {
+    try {
+      const email = googleEmail || 'rootnexis@gmail.com';
+      let firstName = 'RootNexis';
+      let lastName = 'User';
+      if (displayName) {
+        const parts = displayName.trim().split(' ');
+        firstName = parts[0] || 'RootNexis';
+        lastName = parts.slice(1).join(' ') || '';
+      }
+
+      if (typeof supabase.auth.signInWithGoogle === 'function') {
+        const res = await supabase.auth.signInWithGoogle({ email, firstName, lastName });
+        if (res?.error) return { error: res.error.message || 'Google sign in failed' };
+      } else if (typeof supabase.auth.signInWithOAuth === 'function') {
+        const res = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { email, data: { first_name: firstName, last_name: lastName } },
+        });
+        if (res?.error) return { error: res.error.message || 'Google sign in failed' };
+      } else {
+        const res = await supabase.auth.signInWithPassword({ email, password: 'google_oauth' });
+        if (res?.error) return { error: res.error.message };
+      }
+      return { error: null };
+    } catch (err: any) {
+      return { error: err?.message || 'Google authentication failed' };
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -128,6 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isStaff: role ? STAFF_ROLES.includes(role) : false,
     signIn,
     signUp,
+    signInWithGoogle,
     signOut,
     refreshProfile,
   };

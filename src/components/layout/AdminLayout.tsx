@@ -53,7 +53,28 @@ export function AdminLayout() {
             <div className="admin-logo-icon"><Store size={18} /></div>
             <span className="admin-logo-text">Ituze</span>
           </Link>
-          <span className="admin-badge">Admin</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <span className="admin-badge">Admin</span>
+            <button
+              type="button"
+              className="admin-sidebar-close-btn hide-desktop"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close sidebar"
+              style={{
+                background: 'rgba(255, 255, 255, 0.12)',
+                border: 'none',
+                color: 'white',
+                borderRadius: 'var(--radius-md)',
+                padding: '6px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <nav className="admin-nav" aria-label="Admin navigation">
@@ -183,10 +204,14 @@ export function AdminLayout() {
                 padding: '6px 12px',
                 borderRadius: 'var(--radius-lg)',
                 textDecoration: 'none',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
               }}
+              title="View live Storefront"
             >
               <Store size={14} />
-              <span>View Storefront</span>
+              <span className="hide-mobile">View Storefront</span>
+              <span className="hide-desktop">Store</span>
             </Link>
           </div>
         </header>

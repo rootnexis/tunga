@@ -267,17 +267,22 @@ class MockQueryBuilder implements PromiseLike<any> {
         dataset = cart.items || [];
         break;
       }
-      case 'profiles': {
         const currentUser = getStored<any>(STORAGE_KEYS.USER, null);
         const isAdminStored = localStorage.getItem('ituza_admin_mode') === 'true';
         if (currentUser) {
-          const isUserAdmin = isAdminStored || currentUser.email?.toLowerCase().includes('admin') || currentUser.user_metadata?.role === 'admin';
+          const emailLower = (currentUser.email || '').toLowerCase();
+          const isUserAdmin =
+            isAdminStored ||
+            emailLower.includes('admin') ||
+            emailLower === 'rootnexis@gmail.com' ||
+            currentUser.user_metadata?.role === 'admin' ||
+            currentUser.user_metadata?.role === 'super_admin';
           dataset = [
             {
               id: currentUser.id,
               role: isUserAdmin ? 'admin' : (currentUser.user_metadata?.role || 'customer'),
-              first_name: currentUser.user_metadata?.first_name || (isUserAdmin ? 'Store' : 'Valued'),
-              last_name: currentUser.user_metadata?.last_name || (isUserAdmin ? 'Administrator' : 'Customer'),
+              first_name: currentUser.user_metadata?.first_name || (isUserAdmin ? 'RootNexis' : 'Valued'),
+              last_name: currentUser.user_metadata?.last_name || (isUserAdmin ? 'Admin' : 'Customer'),
               phone: '+250 788 123 456',
               avatar_url: null,
               is_active: true,
@@ -645,6 +650,37 @@ const mockAuth = {
     const session = getStoredSession();
     authListeners.forEach((cb) => cb('SIGNED_IN', session));
     return { data: { user, session }, error: null };
+  },
+
+  async signInWithOAuth({ provider, options }: { provider: string; options?: any }) {
+    if (provider === 'google') {
+      const email = options?.email || 'rootnexis@gmail.com';
+      const firstName = options?.data?.first_name || 'RootNexis';
+      const emailLower = email.toLowerCase();
+      if (emailLower.includes('admin') || emailLower === 'rootnexis@gmail.com' || options?.data?.role === 'admin') {
+        localStorage.setItem('ituza_admin_mode', 'true');
+      }
+      const user = createMockUser(email, firstName, lastName);
+      user.app_metadata = { ...user.app_metadata, provider: 'google', providers: ['google'] };
+      setStored(STORAGE_KEYS.USER, user);
+      const session = getStoredSession();
+      authListeners.forEach((cb) => cb('SIGNED_IN', session));
+      return { data: { user, session, provider: 'google', url: options?.redirectTo || null }, error: null };
+    }
+    return { data: null, error: { message: `Unsupported provider: ${provider}` } };
+  },
+
+  async signInWithGoogle(options?: { email?: string; firstName?: string; lastName?: string }) {
+    return this.signInWithOAuth({
+      provider: 'google',
+      options: {
+        email: options?.email || 'rootnexis@gmail.com',
+        data: {
+          first_name: options?.firstName || 'RootNexis',
+          last_name: options?.lastName || 'Member',
+        },
+      },
+    });
   },
 
   async signUp({ email, options }: { email: string; password?: string; options?: any }) {

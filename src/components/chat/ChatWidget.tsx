@@ -22,7 +22,6 @@ import {
   CreditCard,
   ShieldCheck,
   Clock,
-  Star,
   Info,
   ShoppingBag,
   Zap,
@@ -147,7 +146,7 @@ function parseMessageBlocks(text: string): FormattedBlock[] {
     }
 
     // Divider: --- or ***
-    if (/^(\-{3,}|\*{3,})$/.test(trimmed)) {
+    if (/^(-{3,}|\*{3,})$/.test(trimmed)) {
       blocks.push({ type: 'divider', content: '' });
       continue;
     }

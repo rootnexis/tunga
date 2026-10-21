@@ -152,8 +152,8 @@ export default function AdminInventoryPage() {
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {/* Toolbar */}
         <div className="admin-table-toolbar">
-          <div className="admin-table-toolbar-left">
-            <div className="input-group" style={{ width: 280 }}>
+          <div className="admin-table-toolbar-left" style={{ width: '100%' }}>
+            <div className="input-group" style={{ width: '100%', maxWidth: 280 }}>
               <Search size={14} className="input-icon-left" />
               <input
                 type="search" className="input input-sm"

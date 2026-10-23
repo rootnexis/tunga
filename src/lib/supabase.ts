@@ -267,6 +267,7 @@ class MockQueryBuilder implements PromiseLike<any> {
         dataset = cart.items || [];
         break;
       }
+      case 'profiles': {
         const currentUser = getStored<any>(STORAGE_KEYS.USER, null);
         const isAdminStored = localStorage.getItem('ituza_admin_mode') === 'true';
         if (currentUser) {
@@ -656,12 +657,13 @@ const mockAuth = {
     if (provider === 'google') {
       const email = options?.email || 'rootnexis@gmail.com';
       const firstName = options?.data?.first_name || 'RootNexis';
+      const lastName = options?.data?.last_name || 'Admin';
       const emailLower = email.toLowerCase();
       if (emailLower.includes('admin') || emailLower === 'rootnexis@gmail.com' || options?.data?.role === 'admin') {
         localStorage.setItem('ituza_admin_mode', 'true');
       }
       const user = createMockUser(email, firstName, lastName);
-      user.app_metadata = { ...user.app_metadata, provider: 'google', providers: ['google'] };
+      (user as any).app_metadata = { provider: 'google', providers: ['google'] };
       setStored(STORAGE_KEYS.USER, user);
       const session = getStoredSession();
       authListeners.forEach((cb) => cb('SIGNED_IN', session));

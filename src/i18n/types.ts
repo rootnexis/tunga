@@ -121,6 +121,15 @@ export interface Translations {
     emailRequired: string;
     validEmailRequired: string;
     passwordRequired: string;
+    backToStore: string;
+    rememberMe: string;
+    sslEncrypted: string;
+    privacyProtected: string;
+    createdBy: string;
+    orContinueWith: string;
+    continueWithGoogle: string;
+    orSignUpWith: string;
+    signUpWithGoogle: string;
   };
   // Account
   account: {
@@ -333,6 +342,7 @@ export interface Translations {
     sale: string;
     saveDiscount: string;
     relatedProducts: string;
+    quickView: string;
   };
   // Footer
   footer: {

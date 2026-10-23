@@ -61,6 +61,15 @@ export const sw: Translations = {
     emailRequired: 'Barua pepe inahitajika',
     validEmailRequired: 'Weka barua pepe sahihi',
     passwordRequired: 'Nenosiri linahitajika',
+    backToStore: 'Rudi dukani',
+    rememberMe: 'Nikumbuke kwenye kifaa hiki',
+    sslEncrypted: 'Ulinzi wa SSL wa biti 256',
+    privacyProtected: 'Faragha Imelindwa 100%',
+    createdBy: 'Imeundwa kwa ustadi na',
+    orContinueWith: 'Au endelea na',
+    continueWithGoogle: 'Endelea na Google',
+    orSignUpWith: 'Au jisajili na',
+    signUpWithGoogle: 'Jisajili na Google',
   },
   account: {
     dashboard: 'Dashibodi', orders: 'Maagizo', wishlist: 'Orodha ya Matakwa',
@@ -230,6 +239,7 @@ export const sw: Translations = {
     sale: 'Ofa',
     saveDiscount: 'Okoa',
     relatedProducts: 'Bidhaa Zinazohusiana',
+    quickView: 'Kutazama kwa haraka',
   },
   footer: {
     tagline: 'Bidhaa bora zinazotolewa kwa kasi, utunzaji na ubora.',

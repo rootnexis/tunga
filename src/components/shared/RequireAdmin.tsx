@@ -223,5 +223,6 @@ export function RequireAdmin({ children }: Props) {
           </Link>
         </div>
       </div>
+    </div>
   );
 }

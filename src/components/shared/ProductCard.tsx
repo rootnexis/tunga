@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Heart, Check } from 'lucide-react';
+import { ShoppingCart, Heart, Check, Eye } from 'lucide-react';
 import { StarRating } from './StarRating';
+import { QuickViewModal } from './QuickViewModal';
 import { useCart } from '@/contexts/CartContext';
 import { useT } from '@/contexts/LanguageContext';
 import { formatCurrency, calculateDiscount, getEffectivePrice } from '@/utils/formatters';
@@ -21,6 +22,7 @@ export function ProductCard({ product, onWishlist, isWishlisted = false }: Props
   const { t } = useT();
   const navigate = useNavigate();
   const [justAdded, setJustAdded] = useState(false);
+  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
 
   const primaryImage = product.images?.find(img => img.is_primary) ?? product.images?.[0];
   const effectivePrice = getEffectivePrice(product);
@@ -30,10 +32,23 @@ export function ProductCard({ product, onWishlist, isWishlisted = false }: Props
   const handleCardClick = (e: React.MouseEvent) => {
     // If the click happened on a button or action element, do not navigate
     const el = e.target as HTMLElement;
-    if (el.closest('button') || el.closest('.product-card-actions') || el.closest('.product-card-wishlist')) {
+    if (
+      el.closest('button') ||
+      el.closest('.product-card-actions') ||
+      el.closest('.product-card-wishlist') ||
+      el.closest('.product-card-quickview-btn') ||
+      el.closest('.quickview-backdrop') ||
+      el.closest('.quickview-dialog')
+    ) {
       return;
     }
     navigate(`/product/${product.slug}`);
+  };
+
+  const handleQuickView = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsQuickViewOpen(true);
   };
 
   const handleAddToCart = async (e: React.MouseEvent) => {
@@ -84,26 +99,52 @@ export function ProductCard({ product, onWishlist, isWishlisted = false }: Props
           )}
         </div>
 
-        {/* Wishlist button */}
-        {onWishlist && (
-          <button
-            type="button"
-            data-no-route-loader="true"
-            className={`product-card-wishlist${isWishlisted ? ' active' : ''}`}
-            onClick={handleWishlist}
-            aria-label={isWishlisted ? t.product.wishlist : t.product.wishlist}
-          >
-            <Heart size={14} fill={isWishlisted ? 'currentColor' : 'transparent'} />
-          </button>
-        )}
-
-        {/* Add to cart overlay */}
-        {inStock && (
-          <div className="product-card-actions" data-no-route-loader="true">
+        {/* Top-right floating actions (Wishlist + Quick View) */}
+        <div className="product-card-top-actions">
+          {onWishlist && (
             <button
               type="button"
               data-no-route-loader="true"
-              className={`btn btn-primary btn-sm w-full${justAdded ? ' btn-success' : ''}`}
+              className={`product-card-icon-btn product-card-wishlist${isWishlisted ? ' active' : ''}`}
+              onClick={handleWishlist}
+              aria-label={isWishlisted ? t.product.wishlist : t.product.wishlist}
+              title={t.product.wishlist}
+            >
+              <Heart size={14} fill={isWishlisted ? 'currentColor' : 'transparent'} />
+            </button>
+          )}
+
+          <button
+            type="button"
+            data-no-route-loader="true"
+            className="product-card-icon-btn product-card-quickview-btn"
+            onClick={handleQuickView}
+            aria-label={`${t.product.quickView || 'Quick View'}: ${product.name}`}
+            title={t.product.quickView || 'Quick View'}
+          >
+            <Eye size={14} />
+          </button>
+        </div>
+
+        {/* Action overlay (Quick View + Add to Cart) */}
+        <div className="product-card-actions" data-no-route-loader="true">
+          <button
+            type="button"
+            data-no-route-loader="true"
+            className="btn btn-secondary btn-sm product-card-quickview-action-btn"
+            onClick={handleQuickView}
+            aria-label={`${t.product.quickView || 'Quick View'}: ${product.name}`}
+            title={t.product.quickView || 'Quick View'}
+          >
+            <Eye size={13} />
+            <span>{t.product.quickView || 'Quick View'}</span>
+          </button>
+
+          {inStock && (
+            <button
+              type="button"
+              data-no-route-loader="true"
+              className={`btn btn-primary btn-sm product-card-cart-action-btn${justAdded ? ' btn-success' : ''}`}
               onClick={handleAddToCart}
               aria-label={`${t.product.addToCart}: ${product.name}`}
               style={justAdded ? { background: '#10b981', borderColor: '#10b981', color: '#fff' } : undefined}
@@ -120,8 +161,8 @@ export function ProductCard({ product, onWishlist, isWishlisted = false }: Props
                 </>
               )}
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Body */}
@@ -162,6 +203,13 @@ export function ProductCard({ product, onWishlist, isWishlisted = false }: Props
           )}
         </div>
       </div>
+
+      {/* Quick View Modal */}
+      <QuickViewModal
+        isOpen={isQuickViewOpen}
+        onClose={() => setIsQuickViewOpen(false)}
+        product={product}
+      />
     </div>
   );
 }

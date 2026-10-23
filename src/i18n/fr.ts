@@ -60,6 +60,15 @@ export const fr: Translations = {
     emailRequired: "L'e-mail est requis",
     validEmailRequired: 'Entrez un e-mail valide',
     passwordRequired: 'Le mot de passe est requis',
+    backToStore: 'Retour à la boutique',
+    rememberMe: 'Se souvenir de moi sur cet appareil',
+    sslEncrypted: 'Crypté SSL 256-bit',
+    privacyProtected: '100% Confidentialité protégée',
+    createdBy: 'Créé avec précision par',
+    orContinueWith: 'Ou continuer avec',
+    continueWithGoogle: 'Continuer avec Google',
+    orSignUpWith: "Ou s'inscrire avec",
+    signUpWithGoogle: "S'inscrire avec Google",
   },
   account: {
     dashboard: 'Tableau de bord', orders: 'Commandes', wishlist: 'Liste de souhaits',
@@ -229,6 +238,7 @@ export const fr: Translations = {
     sale: 'Promo',
     saveDiscount: 'Économisez',
     relatedProducts: 'Produits similaires',
+    quickView: 'Aperçu rapide',
   },
   footer: {
     tagline: 'Des produits premium livrés avec rapidité, soin et excellence.',

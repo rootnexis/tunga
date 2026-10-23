@@ -116,7 +116,7 @@ export default function RegisterPage() {
             <div className="login-top-bar">
               <Link to="/" className="login-back-btn">
                 <ArrowLeft size={14} />
-                <span>Back to Store</span>
+                <span>{t.auth.backToStore || 'Back to Store'}</span>
               </Link>
 
               <Link to="/" className="login-brand-header">
@@ -302,7 +302,7 @@ export default function RegisterPage() {
             {/* Social Logins */}
             <div className="login-or-divider" style={{ margin: '8px 0' }}>
               <div className="login-or-line" />
-              <span className="login-or-text">Or sign up with</span>
+              <span className="login-or-text">{t.auth.orSignUpWith || 'Or sign up with'}</span>
               <div className="login-or-line" />
             </div>
 
@@ -310,7 +310,7 @@ export default function RegisterPage() {
               type="button"
               className="login-google-btn"
               onClick={() => setIsGoogleModalOpen(true)}
-              aria-label="Sign up with Google"
+              aria-label={t.auth.signUpWithGoogle || 'Sign up with Google'}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                 <path
@@ -330,7 +330,7 @@ export default function RegisterPage() {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                 />
               </svg>
-              <span>Sign up with Google</span>
+              <span>{t.auth.signUpWithGoogle || 'Sign up with Google'}</span>
             </button>
 
             {/* Google Authentication Modal */}
@@ -353,14 +353,14 @@ export default function RegisterPage() {
             <div className="login-trust-footer">
               <div className="login-trust-badges">
                 <span className="login-trust-badge">
-                  <ShieldCheck size={13} /> 256-Bit SSL Encrypted
+                  <ShieldCheck size={13} /> {t.auth.sslEncrypted || '256-Bit SSL Encrypted'}
                 </span>
                 <span className="login-trust-badge">
-                  <CheckCircle2 size={13} /> 100% Privacy Protected
+                  <CheckCircle2 size={13} /> {t.auth.privacyProtected || '100% Privacy Protected'}
                 </span>
               </div>
               <p className="login-rootnexis-credit">
-                Created with precision by{' '}
+                {t.auth.createdBy || 'Created with precision by'}{' '}
                 <a
                   href="https://rootnexis.kesug.com/"
                   target="_blank"

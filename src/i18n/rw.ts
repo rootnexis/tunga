@@ -61,6 +61,15 @@ export const rw: Translations = {
     emailRequired: 'Imeri irakenewe',
     validEmailRequired: 'Andika imeri y\'ukuri',
     passwordRequired: 'Ijambobanga rirakenewe',
+    backToStore: 'Subira mu iduka',
+    rememberMe: 'Nyibuka kuri iki gikoresho',
+    sslEncrypted: 'Umutekano wa SSL 256-Bit',
+    privacyProtected: '100% Amakuru arinzwe',
+    createdBy: 'Yakozwe neza na',
+    orContinueWith: 'Cyangwa komeza ukoresheje',
+    continueWithGoogle: 'Komeza na Google',
+    orSignUpWith: 'Cyangwa wiyandikishe ukoresheje',
+    signUpWithGoogle: 'Iyandikishe na Google',
   },
   account: {
     dashboard: 'Imbago', orders: 'Ibyatumijwe', wishlist: 'Ibyonifuzwa',
@@ -230,6 +239,7 @@ export const rw: Translations = {
     sale: 'Kugabanyirizwa',
     saveDiscount: 'Uzigamye',
     relatedProducts: 'Ibicuruzwa bifitanye isano',
+    quickView: 'Kureba vuba',
   },
   footer: {
     tagline: 'Ibicuruzwa byiza biragezwa vuba, n\'ubwitange n\'ubwiza.',

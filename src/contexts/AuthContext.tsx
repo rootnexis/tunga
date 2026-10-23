@@ -111,23 +111,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async (googleEmail?: string, displayName?: string): Promise<{ error: string | null }> => {
     try {
-      const email = googleEmail || 'rootnexis@gmail.com';
-      let firstName = 'RootNexis';
-      let lastName = 'User';
-      if (displayName) {
+      if (!googleEmail || !googleEmail.trim()) {
+        return { error: 'Please provide a valid Google account email.' };
+      }
+      const email = googleEmail.trim();
+      let firstName = '';
+      let lastName = '';
+      if (displayName?.trim()) {
         const parts = displayName.trim().split(' ');
-        firstName = parts[0] || 'RootNexis';
-        lastName = parts.slice(1).join(' ') || '';
+        firstName = parts[0] || 'Google';
+        lastName = parts.slice(1).join(' ') || 'User';
+      } else {
+        const localPart = email.split('@')[0] || 'User';
+        const nameParts = localPart.replace(/[._-]+/g, ' ').split(' ');
+        firstName = nameParts[0] ? nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1) : 'Google';
+        lastName = nameParts.length > 1 ? nameParts.slice(1).map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : 'User';
       }
 
-      if (typeof supabase.auth.signInWithGoogle === 'function') {
-        const res = await supabase.auth.signInWithGoogle({ email, firstName, lastName });
-        if (res?.error) return { error: res.error.message || 'Google sign in failed' };
-      } else if (typeof supabase.auth.signInWithOAuth === 'function') {
+      if (typeof supabase.auth.signInWithOAuth === 'function') {
         const res = await supabase.auth.signInWithOAuth({
           provider: 'google',
-          options: { email, data: { first_name: firstName, last_name: lastName } },
+          options: {
+            email,
+            data: { first_name: firstName, last_name: lastName },
+            redirectTo: window.location.origin,
+          },
         });
+        if (res?.error) return { error: res.error.message || 'Google sign in failed' };
+      } else if (typeof supabase.auth.signInWithGoogle === 'function') {
+        const res = await supabase.auth.signInWithGoogle({ email, firstName, lastName });
         if (res?.error) return { error: res.error.message || 'Google sign in failed' };
       } else {
         const res = await supabase.auth.signInWithPassword({ email, password: 'google_oauth' });

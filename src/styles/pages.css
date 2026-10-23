@@ -2988,6 +2988,98 @@
   gap: 8px;
   margin-top: 4px;
 }
+.google-account-remove-btn {
+  background: none;
+  border: none;
+  color: var(--slate-400);
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.google-account-remove-btn:hover {
+  background: var(--slate-100);
+  color: #ef4444;
+}
+.google-account-entry-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.google-back-to-accounts-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #4285f4;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 4px;
+}
+.google-back-to-accounts-btn:hover {
+  text-decoration: underline;
+}
+.google-primary-submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 16px;
+  background: #1a73e8;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(26, 115, 232, 0.3);
+  transition: all 0.2s ease;
+}
+.google-primary-submit-btn:hover:not(:disabled) {
+  background: #1557b0;
+  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
+}
+.google-primary-submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.google-sample-account-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  background: #f8fafc;
+  color: var(--slate-700);
+  border: 1px dashed var(--slate-300);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.google-sample-account-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #34a853;
+  color: var(--slate-900);
+}
+.google-auth-spinner-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #e8f0fe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .google-loading-overlay {
   position: absolute;
   inset: 0;

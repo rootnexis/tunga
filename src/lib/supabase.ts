@@ -275,17 +275,16 @@ class MockQueryBuilder implements PromiseLike<any> {
           const isUserAdmin =
             isAdminStored ||
             emailLower.includes('admin') ||
-            emailLower === 'rootnexis@gmail.com' ||
             currentUser.user_metadata?.role === 'admin' ||
             currentUser.user_metadata?.role === 'super_admin';
           dataset = [
             {
               id: currentUser.id,
               role: isUserAdmin ? 'admin' : (currentUser.user_metadata?.role || 'customer'),
-              first_name: currentUser.user_metadata?.first_name || (isUserAdmin ? 'RootNexis' : 'Valued'),
-              last_name: currentUser.user_metadata?.last_name || (isUserAdmin ? 'Admin' : 'Customer'),
-              phone: '+250 788 123 456',
-              avatar_url: null,
+              first_name: currentUser.user_metadata?.first_name || 'Customer',
+              last_name: currentUser.user_metadata?.last_name || 'Member',
+              phone: currentUser.user_metadata?.phone || '+250 788 123 456',
+              avatar_url: currentUser.user_metadata?.avatar_url || null,
               is_active: true,
               email_verified_at: new Date().toISOString(),
               created_at: currentUser.created_at,
@@ -655,13 +654,27 @@ const mockAuth = {
 
   async signInWithOAuth({ provider, options }: { provider: string; options?: any }) {
     if (provider === 'google') {
-      const email = options?.email || 'rootnexis@gmail.com';
-      const firstName = options?.data?.first_name || 'RootNexis';
-      const lastName = options?.data?.last_name || 'Admin';
+      const email = (options?.email || '').trim();
+      if (!email) {
+        return { data: null, error: { message: 'Google account email is required' } };
+      }
       const emailLower = email.toLowerCase();
-      if (emailLower.includes('admin') || emailLower === 'rootnexis@gmail.com' || options?.data?.role === 'admin') {
+      let firstName = (options?.data?.first_name || '').trim();
+      let lastName = (options?.data?.last_name || '').trim();
+      if (!firstName) {
+        const localPart = email.split('@')[0] || 'User';
+        const nameParts = localPart.replace(/[._-]+/g, ' ').split(' ');
+        firstName = nameParts[0] ? nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1) : 'Google';
+        lastName = nameParts.length > 1 ? nameParts.slice(1).map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : 'User';
+      }
+      if (!lastName) {
+        lastName = 'User';
+      }
+
+      if (emailLower.includes('admin') || options?.data?.role === 'admin') {
         localStorage.setItem('ituza_admin_mode', 'true');
       }
+
       const user = createMockUser(email, firstName, lastName);
       (user as any).app_metadata = { provider: 'google', providers: ['google'] };
       setStored(STORAGE_KEYS.USER, user);
@@ -673,13 +686,16 @@ const mockAuth = {
   },
 
   async signInWithGoogle(options?: { email?: string; firstName?: string; lastName?: string }) {
+    if (!options?.email) {
+      return { data: null, error: { message: 'Google account email is required' } };
+    }
     return this.signInWithOAuth({
       provider: 'google',
       options: {
-        email: options?.email || 'rootnexis@gmail.com',
+        email: options.email,
         data: {
-          first_name: options?.firstName || 'RootNexis',
-          last_name: options?.lastName || 'Member',
+          first_name: options.firstName,
+          last_name: options.lastName,
         },
       },
     });

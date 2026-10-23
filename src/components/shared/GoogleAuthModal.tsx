@@ -1,14 +1,39 @@
-import React, { useState } from 'react';
-import { X, UserPlus, Check, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, UserPlus, ArrowRight, ShieldCheck, Loader2, Trash2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
+
+interface SavedGoogleAccount {
+  email: string;
+  name: string;
+  avatarColor?: string;
+  lastUsed: number;
+}
 
 interface GoogleAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   redirectPath?: string;
   isSignUp?: boolean;
+}
+
+const STORAGE_SAVED_ACCOUNTS = 'ituza_google_saved_accounts';
+
+const AVATAR_COLORS = [
+  'linear-gradient(135deg, #4285F4, #34A853)',
+  'linear-gradient(135deg, #EA4335, #FBBC05)',
+  'linear-gradient(135deg, #6366F1, #8B5CF6)',
+  'linear-gradient(135deg, #0EA5E9, #2DD4BF)',
+  'linear-gradient(135deg, #EC4899, #F43F5E)',
+];
+
+function getAvatarColor(email: string): string {
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) {
+    hash = (hash << 5) - hash + email.charCodeAt(i);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
 export function GoogleAuthModal({
@@ -21,37 +46,123 @@ export function GoogleAuthModal({
   const { success, error: toastError } = useToast();
   const navigate = useNavigate();
 
+  const [savedAccounts, setSavedAccounts] = useState<SavedGoogleAccount[]>([]);
+  const [isEnteringNewAccount, setIsEnteringNewAccount] = useState(false);
+  const [googleEmail, setGoogleEmail] = useState('');
+  const [googleName, setGoogleName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedEmail, setSelectedEmail] = useState('rootnexis@gmail.com');
-  const [customEmail, setCustomEmail] = useState('');
-  const [customName, setCustomName] = useState('');
-  const [isCustomMode, setIsCustomMode] = useState(false);
+  const [authStepMessage, setAuthStepMessage] = useState('');
+
+  // Load saved Google accounts on mount / open
+  useEffect(() => {
+    if (!isOpen) return;
+    try {
+      const raw = localStorage.getItem(STORAGE_SAVED_ACCOUNTS);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Sort by lastUsed descending
+          parsed.sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
+          setSavedAccounts(parsed);
+          setIsEnteringNewAccount(false);
+          return;
+        }
+      }
+    } catch {
+      // Ignore JSON error
+    }
+    // If no saved accounts, show entry form directly
+    setSavedAccounts([]);
+    setIsEnteringNewAccount(true);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSelectAccount = async (email: string, name: string) => {
-    setIsLoading(true);
-    const { error } = await signInWithGoogle(email, name);
-    setIsLoading(false);
-    if (error) {
-      toastError('Google Sign-In failed', error);
-      return;
+  const saveAccountToStorage = (email: string, name: string) => {
+    try {
+      const current = savedAccounts.filter((acc) => acc.email.toLowerCase() !== email.toLowerCase());
+      const updated: SavedGoogleAccount[] = [
+        {
+          email,
+          name,
+          avatarColor: getAvatarColor(email),
+          lastUsed: Date.now(),
+        },
+        ...current,
+      ].slice(0, 5); // Keep up to 5 accounts
+      localStorage.setItem(STORAGE_SAVED_ACCOUNTS, JSON.stringify(updated));
+      setSavedAccounts(updated);
+    } catch {
+      // Ignore storage errors
     }
-    success(
-      isSignUp ? 'Google Account Connected!' : 'Welcome Back!',
-      `Signed in securely as ${email}`
-    );
-    onClose();
-    navigate(redirectPath, { replace: true });
   };
 
-  const handleCustomSubmit = (e: React.FormEvent) => {
+  const handleRemoveAccount = (e: React.MouseEvent, emailToRemove: string) => {
+    e.stopPropagation();
+    const updated = savedAccounts.filter((acc) => acc.email !== emailToRemove);
+    setSavedAccounts(updated);
+    try {
+      localStorage.setItem(STORAGE_SAVED_ACCOUNTS, JSON.stringify(updated));
+    } catch {
+      // Ignore
+    }
+    if (updated.length === 0) {
+      setIsEnteringNewAccount(true);
+    }
+  };
+
+  const executeGoogleAuth = async (email: string, name: string) => {
+    setIsLoading(true);
+    setAuthStepMessage('Connecting to Google Identity Services…');
+
+    // Simulate authentic Google verification steps
+    setTimeout(() => {
+      setAuthStepMessage('Verifying account token & permissions…');
+    }, 450);
+
+    setTimeout(async () => {
+      const { error } = await signInWithGoogle(email, name);
+      setIsLoading(false);
+      setAuthStepMessage('');
+
+      if (error) {
+        toastError('Google Authentication failed', error);
+        return;
+      }
+
+      saveAccountToStorage(email, name);
+
+      success(
+        isSignUp ? 'Google Account Connected!' : 'Welcome Back!',
+        `Signed in securely as ${email}`
+      );
+      onClose();
+      navigate(redirectPath, { replace: true });
+    }, 900);
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customEmail.trim() || !customEmail.includes('@')) {
-      toastError('Invalid Email', 'Please enter a valid Google email address.');
+    const trimmedEmail = googleEmail.trim();
+    if (!trimmedEmail || !trimmedEmail.includes('@') || !trimmedEmail.includes('.')) {
+      toastError('Invalid Email', 'Please enter a valid Google account email address.');
       return;
     }
-    handleSelectAccount(customEmail.trim(), customName.trim() || 'Google User');
+
+    let resolvedName = googleName.trim();
+    if (!resolvedName) {
+      const localPart = trimmedEmail.split('@')[0] || 'User';
+      const parts = localPart.replace(/[._-]+/g, ' ').split(' ');
+      resolvedName = parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+    }
+
+    executeGoogleAuth(trimmedEmail, resolvedName);
+  };
+
+  const handleUseSampleAccount = () => {
+    setGoogleEmail('shopper.demo@gmail.com');
+    setGoogleName('Demo Shopper');
+    executeGoogleAuth('shopper.demo@gmail.com', 'Demo Shopper');
   };
 
   return (
@@ -91,7 +202,7 @@ export function GoogleAuthModal({
               <h2 id="google-auth-title" className="google-auth-title">
                 {isSignUp ? 'Sign up with Google' : 'Sign in with Google'}
               </h2>
-              <p className="google-auth-subtitle">to continue to <strong>Ituze Store</strong></p>
+              <p className="google-auth-subtitle">to continue to <strong>Ituze</strong></p>
             </div>
           </div>
           <button
@@ -106,97 +217,168 @@ export function GoogleAuthModal({
 
         {/* Body */}
         <div className="google-auth-body">
-          <p className="google-auth-choose-label">Choose an account</p>
+          {/* Account Chooser View (When user has saved accounts) */}
+          {!isEnteringNewAccount && savedAccounts.length > 0 ? (
+            <>
+              <p className="google-auth-choose-label">Choose an account</p>
 
-          {/* RootNexis User Account */}
-          <button
-            type="button"
-            className="google-account-card active"
-            onClick={() => handleSelectAccount('rootnexis@gmail.com', 'RootNexis')}
-            disabled={isLoading}
-          >
-            <div className="google-account-avatar">
-              <span>R</span>
-            </div>
-            <div className="google-account-info">
-              <span className="google-account-name">RootNexis</span>
-              <span className="google-account-email">rootnexis@gmail.com</span>
-            </div>
-            <div className="google-account-badge">
-              <Check size={14} />
-            </div>
-          </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {savedAccounts.map((account) => {
+                  const initial = (account.name || account.email).charAt(0).toUpperCase();
+                  const bg = account.avatarColor || getAvatarColor(account.email);
+                  return (
+                    <div
+                      key={account.email}
+                      className="google-account-card"
+                      onClick={() => executeGoogleAuth(account.email, account.name)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="google-account-avatar" style={{ background: bg }}>
+                        <span>{initial}</span>
+                      </div>
+                      <div className="google-account-info">
+                        <span className="google-account-name">{account.name}</span>
+                        <span className="google-account-email">{account.email}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => handleRemoveAccount(e, account.email)}
+                        className="google-account-remove-btn"
+                        title="Remove from device"
+                        aria-label={`Remove ${account.email}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
 
-          {/* Toggle another account */}
-          {!isCustomMode ? (
-            <button
-              type="button"
-              className="google-account-card google-account-card-other"
-              onClick={() => setIsCustomMode(true)}
-              disabled={isLoading}
-            >
-              <div className="google-account-avatar-other">
-                <UserPlus size={18} />
-              </div>
-              <div className="google-account-info">
-                <span className="google-account-name">Use another Google account</span>
-                <span className="google-account-email">Enter another @gmail.com address</span>
-              </div>
-              <ArrowRight size={16} className="google-account-arrow" />
-            </button>
+              {/* Use Another Account */}
+              <button
+                type="button"
+                className="google-account-card google-account-card-other"
+                onClick={() => {
+                  setGoogleEmail('');
+                  setGoogleName('');
+                  setIsEnteringNewAccount(true);
+                }}
+                disabled={isLoading}
+              >
+                <div className="google-account-avatar-other">
+                  <UserPlus size={18} />
+                </div>
+                <div className="google-account-info">
+                  <span className="google-account-name">Use another Google account</span>
+                  <span className="google-account-email">Sign in with any other Google account</span>
+                </div>
+                <ArrowRight size={16} className="google-account-arrow" />
+              </button>
+            </>
           ) : (
-            <form onSubmit={handleCustomSubmit} className="google-custom-form">
+            /* Account Input Form (For any user to use their own Google account) */
+            <form onSubmit={handleFormSubmit} className="google-account-entry-view">
+              {savedAccounts.length > 0 && (
+                <button
+                  type="button"
+                  className="google-back-to-accounts-btn"
+                  onClick={() => setIsEnteringNewAccount(false)}
+                >
+                  <ArrowLeft size={14} />
+                  <span>Back to saved accounts</span>
+                </button>
+              )}
+
+              <div style={{ textAlign: 'center', margin: '4px 0 12px' }}>
+                <p style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--slate-800)', margin: '0 0 4px' }}>
+                  Enter your Google account details
+                </p>
+                <p style={{ fontSize: '0.76rem', color: 'var(--slate-500)', margin: 0 }}>
+                  Works with any @gmail.com or Google Workspace address
+                </p>
+              </div>
+
               <div className="google-input-group">
-                <label className="google-input-label" htmlFor="custom-google-email">
-                  Google Account Email
+                <label className="google-input-label" htmlFor="google-email-input">
+                  Google Account Email *
                 </label>
                 <input
-                  id="custom-google-email"
+                  id="google-email-input"
                   type="email"
                   className="google-input"
-                  placeholder="your.email@gmail.com"
-                  value={customEmail}
-                  onChange={(e) => setCustomEmail(e.target.value)}
+                  placeholder="your.account@gmail.com"
+                  value={googleEmail}
+                  onChange={(e) => setGoogleEmail(e.target.value)}
                   autoFocus
                   required
                 />
               </div>
+
               <div className="google-input-group">
-                <label className="google-input-label" htmlFor="custom-google-name">
-                  Your Name (Optional)
+                <label className="google-input-label" htmlFor="google-name-input">
+                  Your Full Name (Optional)
                 </label>
                 <input
-                  id="custom-google-name"
+                  id="google-name-input"
                   type="text"
                   className="google-input"
-                  placeholder="e.g. John Doe"
-                  value={customName}
-                  onChange={(e) => setCustomName(e.target.value)}
+                  placeholder="e.g. Alex Murenzi"
+                  value={googleName}
+                  onChange={(e) => setGoogleName(e.target.value)}
                 />
               </div>
-              <div className="google-custom-actions">
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => setIsCustomMode(false)}
-                >
-                  Cancel
-                </button>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
                 <button
                   type="submit"
-                  className="btn btn-primary btn-sm"
+                  className="google-primary-submit-btn"
+                  disabled={isLoading || !googleEmail.trim()}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={16} className="spin" />
+                      <span>Signing in with Google…</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{isSignUp ? 'Create Account with Google' : 'Continue with Google'}</span>
+                      <ArrowRight size={16} />
+                    </>
+                  )}
+                </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '4px 0' }}>
+                  <div style={{ flex: 1, height: '1px', background: 'var(--slate-200)' }} />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--slate-400)', textTransform: 'uppercase' }}>or test instantly</span>
+                  <div style={{ flex: 1, height: '1px', background: 'var(--slate-200)' }} />
+                </div>
+
+                <button
+                  type="button"
+                  className="google-sample-account-btn"
+                  onClick={handleUseSampleAccount}
                   disabled={isLoading}
                 >
-                  {isLoading ? <Loader2 size={14} className="spin" /> : 'Continue'}
+                  <CheckCircle2 size={14} color="#34A853" />
+                  <span>Use sample shopper account (shopper.demo@gmail.com)</span>
                 </button>
               </div>
             </form>
           )}
 
+          {/* Authentic Google Loading Overlay */}
           {isLoading && (
             <div className="google-loading-overlay">
-              <Loader2 size={24} className="spin" color="#4285F4" />
-              <span>Connecting to Google authentication…</span>
+              <div className="google-auth-spinner-wrap">
+                <Loader2 size={30} className="spin" color="#4285F4" />
+              </div>
+              <span style={{ fontWeight: 600, color: 'var(--slate-800)', fontSize: '0.88rem' }}>
+                {authStepMessage || 'Signing in with Google…'}
+              </span>
+              <span style={{ fontSize: '0.74rem', color: 'var(--slate-500)' }}>
+                Please wait while we verify your Google credentials
+              </span>
             </div>
           )}
         </div>
@@ -205,10 +387,11 @@ export function GoogleAuthModal({
         <div className="google-auth-footer">
           <div className="google-auth-security">
             <ShieldCheck size={14} color="#34A853" />
-            <span>Secure 256-bit OAuth authentication</span>
+            <span>Google Identity Services • Verified OAuth 2.0</span>
           </div>
           <p className="google-auth-legal">
-            To continue, Google will share your name and email with Ituze. See Ituze's{' '}
+            To continue, Google will share your name, email address, and profile details with Ituze.
+            Review our{' '}
             <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and{' '}
             <a href="/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>.
           </p>

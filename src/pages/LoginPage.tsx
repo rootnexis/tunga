@@ -15,6 +15,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
 import { GoogleAuthModal } from '@/components/shared/GoogleAuthModal';
+import { GoogleOneTap } from '@/components/shared/GoogleOneTap';
 import loginIllustration from '@/assets/images/login_3d_characters_1792323262471.jpg';
 
 export default function LoginPage() {
@@ -266,6 +267,9 @@ export default function LoginPage() {
               onClose={() => setIsGoogleModalOpen(false)}
               redirectPath={from}
             />
+
+            {/* Google One Tap Detected Account Prompt */}
+            <GoogleOneTap redirectPath={from} />
 
             {/* Bottom Register Link */}
             <p className="login-bottom-text">

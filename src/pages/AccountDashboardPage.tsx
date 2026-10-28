@@ -288,9 +288,17 @@ export default function AccountDashboardPage() {
           {/* Search / Lookup Bar */}
           <form
             onSubmit={handleTrackSearch}
-            style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}
+            style={{
+              display: 'flex',
+              gap: 'var(--space-2)',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              flex: '1 1 260px',
+              justifyContent: 'flex-end',
+              minWidth: 0,
+            }}
           >
-            <div className="input-group" style={{ width: 220 }}>
+            <div className="input-group" style={{ flex: '1 1 170px', minWidth: 0, maxWidth: '100%' }}>
               <Search size={14} className="input-icon-left" />
               <input
                 type="text"
@@ -301,10 +309,10 @@ export default function AccountDashboardPage() {
                   setTrackQuery(e.target.value);
                   if (trackError) setTrackError(null);
                 }}
-                style={{ paddingLeft: 'var(--space-8)', background: '#fff' }}
+                style={{ paddingLeft: 'var(--space-8)', background: '#fff', width: '100%' }}
               />
             </div>
-            <button type="submit" className="btn btn-primary btn-sm">
+            <button type="submit" className="btn btn-primary btn-sm" style={{ flexShrink: 0 }}>
               Track Order
             </button>
           </form>
@@ -423,7 +431,7 @@ export default function AccountDashboardPage() {
                   </p>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
                   <div
                     style={{
                       display: 'flex',
@@ -580,7 +588,7 @@ export default function AccountDashboardPage() {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                   gap: 'var(--space-3)',
                   paddingTop: 'var(--space-3)',
                   borderTop: '1px solid var(--slate-200)',
@@ -664,7 +672,7 @@ export default function AccountDashboardPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
           gap: 'var(--space-3)',
           marginBottom: 'var(--space-6)',
         }}
@@ -680,6 +688,7 @@ export default function AccountDashboardPage() {
               alignItems: 'center',
               gap: 'var(--space-3)',
               padding: 'var(--space-4)',
+              minWidth: 0,
             }}
           >
             <div
@@ -697,7 +706,7 @@ export default function AccountDashboardPage() {
             >
               <Icon size={20} />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <p
                 style={{
                   fontSize: 'var(--text-sm)',
@@ -745,15 +754,25 @@ export default function AccountDashboardPage() {
               </p>
             </div>
           ) : (
-            <div className="table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
-              <table className="table">
+            <div
+              className="table-wrapper"
+              style={{
+                border: 'none',
+                borderRadius: 0,
+                width: '100%',
+                maxWidth: '100%',
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              <table className="table" style={{ minWidth: 580 }}>
                 <thead>
                   <tr>
                     <th>{dp.order}</th>
                     <th>{dp.date}</th>
                     <th>{dp.status}</th>
                     <th>{dp.total}</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
+                    <th style={{ textAlign: 'right' }}>{t.admin.reviews.colActions}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -810,7 +829,7 @@ export default function AccountDashboardPage() {
                               to={`/account/orders/${order.id}`}
                               className="btn btn-ghost btn-sm"
                             >
-                              Details
+                              {t.product.viewDetails}
                             </Link>
                           </div>
                         </td>

@@ -36,8 +36,15 @@ export function AdminLayout() {
   };
 
   const displayName = profile
-    ? [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Admin'
-    : 'Admin';
+    ? [profile.first_name, profile.last_name].filter(Boolean).join(' ') || ta.adminBadge
+    : ta.adminBadge;
+
+  const roleLabel =
+    profile?.role === 'admin' || profile?.role === 'super_admin'
+      ? t.admin.customers.roles.admin
+      : profile?.role === 'staff'
+      ? t.admin.customers.roles.staff
+      : t.admin.customers.roles.customer;
 
   return (
     <div className="admin-layout">
@@ -49,17 +56,23 @@ export function AdminLayout() {
       {/* Sidebar */}
       <aside className={cn('admin-sidebar', sidebarOpen && 'admin-sidebar-open')}>
         <div className="admin-sidebar-header">
-          <Link to="/" className="admin-logo" style={{ textDecoration: 'none', color: 'inherit' }} title="Go to Storefront">
-            <div className="admin-logo-icon"><Store size={18} /></div>
-            <span className="admin-logo-text">Ituze</span>
+          <Link to="/" className="admin-logo" style={{ textDecoration: 'none', color: 'inherit' }} title={ta.storefront}>
+            <div className="admin-logo-icon" style={{ background: 'transparent', padding: 0, overflow: 'hidden' }}>
+              <img
+                src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
+                alt={t.siteName}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: 'inherit' }}
+              />
+            </div>
+            <span className="admin-logo-text">{t.siteName}</span>
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <span className="admin-badge">Admin</span>
+            <span className="admin-badge">{ta.adminBadge}</span>
             <button
               type="button"
               className="admin-sidebar-close-btn hide-desktop"
               onClick={() => setSidebarOpen(false)}
-              aria-label="Close sidebar"
+              aria-label={t.nav.close}
               style={{
                 background: 'rgba(255, 255, 255, 0.12)',
                 border: 'none',
@@ -77,7 +90,7 @@ export function AdminLayout() {
           </div>
         </div>
 
-        <nav className="admin-nav" aria-label="Admin navigation">
+        <nav className="admin-nav" aria-label={ta.navigation}>
           {NAV.map(({ to, icon: Icon, label, end }) => (
             <NavLink
               key={to}
@@ -164,10 +177,10 @@ export function AdminLayout() {
             </div>
             <div className="admin-user-info">
               <p className="admin-user-name">{displayName}</p>
-              <p className="admin-user-role">{profile?.role}</p>
+              <p className="admin-user-role">{roleLabel}</p>
             </div>
           </div>
-          <button className="admin-signout-btn" onClick={handleSignOut} aria-label={ta.signOut}>
+          <button className="admin-signout-btn" onClick={handleSignOut} aria-label={ta.signOut} title={ta.signOut}>
             <LogOut size={16} />
           </button>
         </div>
@@ -179,14 +192,18 @@ export function AdminLayout() {
           <button
             className="admin-menu-toggle"
             onClick={() => setSidebarOpen(prev => !prev)}
-            aria-label="Toggle sidebar"
+            aria-label={ta.navigation}
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <div className="admin-topbar-logo">
             <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'inherit', textDecoration: 'none' }}>
-              <Store size={16} />
-              <span>Ituze Admin</span>
+              <img
+                src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
+                alt={t.siteName}
+                style={{ width: 24, height: 24, borderRadius: 6, objectFit: 'contain', flexShrink: 0 }}
+              />
+              <span>{t.siteName} {ta.adminBadge}</span>
             </Link>
           </div>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
@@ -207,11 +224,11 @@ export function AdminLayout() {
                 whiteSpace: 'nowrap',
                 flexShrink: 0,
               }}
-              title="View live Storefront"
+              title={ta.storefront}
             >
               <Store size={14} />
-              <span className="hide-mobile">View Storefront</span>
-              <span className="hide-desktop">Store</span>
+              <span className="hide-mobile">{ta.storefront}</span>
+              <span className="hide-desktop">{ta.storefrontShort}</span>
             </Link>
           </div>
         </header>

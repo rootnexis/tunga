@@ -588,7 +588,7 @@ export function ChatWidget() {
       />
 
       {/* ── Floating Launcher ── */}
-      <div className="chatbot-launcher">
+      <div className={`chatbot-launcher ${isOpen ? 'chatbot-launcher-open' : ''}`}>
         {showPill && !isOpen && (
           <div className="chatbot-launcher-pill" onClick={() => setIsOpen(true)}>
             <Sparkles size={14} color="#6366f1" />
@@ -624,8 +624,12 @@ export function ChatWidget() {
           {/* Header */}
           <div className="chatbot-header">
             <div className="chatbot-header-left">
-              <div className="chatbot-avatar-wrap">
-                <Bot size={20} />
+              <div className="chatbot-avatar-wrap" style={{ padding: 0, overflow: 'visible' }}>
+                <img
+                  src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
+                  alt="ITUZE AI"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit', display: 'block' }}
+                />
                 <span className="chatbot-avatar-badge" />
               </div>
               <div className="chatbot-header-info">

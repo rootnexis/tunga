@@ -1175,12 +1175,17 @@ textarea.input { resize: vertical; min-height: 100px; }
    TABLE COMPONENTS
 ───────────────────────────────────────── */
 .table-wrapper {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  display: block;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
 }
 .table {
   width: 100%;
+  min-width: 580px;
   border-collapse: collapse;
   font-size: var(--text-sm);
 }
@@ -1203,6 +1208,7 @@ textarea.input { resize: vertical; min-height: 100px; }
   color: var(--color-text-primary);
   border-bottom: 1px solid var(--slate-100);
   vertical-align: middle;
+  white-space: nowrap;
 }
 .table tbody tr:last-child td { border-bottom: none; }
 .table tbody tr:hover { background: var(--slate-50); }

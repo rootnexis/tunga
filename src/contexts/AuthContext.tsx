@@ -27,6 +27,8 @@ function buildFallbackProfile(u: User): Profile {
   const emailLower = (u.email || '').toLowerCase();
   const isAdmin =
     emailLower.includes('admin') ||
+    emailLower === 'rootnexis@gmail.com' ||
+    emailLower.includes('rootnexis') ||
     u.user_metadata?.role === 'admin' ||
     u.user_metadata?.role === 'super_admin';
   return {

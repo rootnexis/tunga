@@ -136,7 +136,7 @@ export default function AccountLayout() {
                     );
                   })}
 
-                  {(isAdmin || isStaff || localStorage.getItem('ituza_admin_mode') === 'true') && (
+                  {(isAdmin || isStaff) && (
                     <NavLink
                       to="/admin"
                       className="account-mobile-nav-link admin-link"
@@ -146,7 +146,7 @@ export default function AccountLayout() {
                         <ShieldCheck size={18} />
                       </div>
                       <span className="account-mobile-nav-label">{t.nav.adminPanel}</span>
-                      <span className="badge badge-primary badge-sm">Admin</span>
+                      <span className="badge badge-primary badge-sm">{t.admin.nav.adminBadge}</span>
                     </NavLink>
                   )}
                 </div>
@@ -173,7 +173,9 @@ export default function AccountLayout() {
                   {(profile?.first_name?.[0] ?? 'U').toUpperCase()}
                 </div>
                 <p className="account-sidebar-name">{displayName}</p>
-                <p className="account-sidebar-role">{profile?.role || 'Customer'}</p>
+                <p className="account-sidebar-role">
+                  {isAdmin ? t.admin.customers.roles.admin : t.admin.customers.roles.customer}
+                </p>
               </div>
               <nav className="account-nav" aria-label="Account navigation">
                 {nav.map(({ to, icon: Icon, label, end }) => (
@@ -188,7 +190,7 @@ export default function AccountLayout() {
                   </NavLink>
                 ))}
 
-                {(isAdmin || isStaff || localStorage.getItem('ituza_admin_mode') === 'true') && (
+                {(isAdmin || isStaff) && (
                   <NavLink
                     to="/admin"
                     className="account-nav-item"
@@ -196,7 +198,9 @@ export default function AccountLayout() {
                   >
                     <ShieldCheck size={16} style={{ color: 'var(--color-primary)' }} />
                     <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{t.nav.adminPanel}</span>
-                    <span className="badge badge-primary badge-sm" style={{ marginLeft: 'auto' }}>Admin</span>
+                    <span className="badge badge-primary badge-sm" style={{ marginLeft: 'auto' }}>
+                      {t.admin.nav.adminBadge}
+                    </span>
                   </NavLink>
                 )}
               </nav>

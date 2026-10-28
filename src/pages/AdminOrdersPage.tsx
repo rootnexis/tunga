@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
 import { Spinner } from '@/components/shared/Spinner';
 import { Pagination } from '@/components/shared/Pagination';
@@ -9,23 +10,26 @@ import { formatCurrency, formatDateShort, ORDER_STATUS_COLORS, ORDER_STATUS_LABE
 import type { Order, OrderStatus } from '@/types';
 
 const PAGE_SIZE = 15;
-const STATUS_FILTERS: { label: string; value: OrderStatus | '' }[] = [
-  { label: 'All', value: '' },
-  { label: 'Pending', value: 'pending' },
-  { label: 'Processing', value: 'processing' },
-  { label: 'Shipped', value: 'shipped' },
-  { label: 'Delivered', value: 'delivered' },
-  { label: 'Cancelled', value: 'cancelled' },
-  { label: 'Refunded', value: 'refunded' },
-];
 
 export default function AdminOrdersPage() {
+  const { t } = useT();
+  const to = t.admin.orders;
   const [orders, setOrders]     = useState<Order[]>([]);
   const [total, setTotal]       = useState(0);
   const [page, setPage]         = useState(1);
   const [search, setSearch]     = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | ''>('');
   const [isLoading, setIsLoading] = useState(true);
+
+  const STATUS_FILTERS: { label: string; value: OrderStatus | '' }[] = [
+    { label: to.filterAll, value: '' },
+    { label: to.filterPending, value: 'pending' },
+    { label: to.filterProcessing, value: 'processing' },
+    { label: to.filterShipped, value: 'shipped' },
+    { label: to.filterDelivered, value: 'delivered' },
+    { label: to.filterCancelled, value: 'cancelled' },
+    { label: to.filterRefunded, value: 'refunded' },
+  ];
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -47,11 +51,11 @@ export default function AdminOrdersPage() {
 
   return (
     <>
-      <PageSeo title="Orders — Admin" />
+      <PageSeo title={`${to.title} — ${t.admin.nav.adminBadge}`} />
       <div className="admin-page-header">
         <div>
-          <h1 className="admin-page-title">Orders</h1>
-          <p className="admin-page-desc">{total.toLocaleString()} total orders</p>
+          <h1 className="admin-page-title">{to.title}</h1>
+          <p className="admin-page-desc">{total.toLocaleString()} {to.totalOrders}</p>
         </div>
       </div>
 
@@ -60,7 +64,7 @@ export default function AdminOrdersPage() {
           <div className="admin-table-toolbar-left" style={{ width: '100%' }}>
             <div className="input-group" style={{ width: '100%', maxWidth: 260 }}>
               <Search size={14} className="input-icon-left" />
-              <input type="search" className="input input-sm" placeholder="Search order #…" value={search}
+              <input type="search" className="input input-sm" placeholder={to.searchPlaceholder} value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }} style={{ paddingLeft: 'var(--space-9)' }} />
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-1)', flexWrap: 'wrap' }}>
@@ -85,7 +89,7 @@ export default function AdminOrdersPage() {
             <div className="table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
               <table className="table">
                 <thead>
-                  <tr><th>Order #</th><th>Date</th><th>Status</th><th>Total</th><th></th></tr>
+                  <tr><th>{to.colOrder}</th><th>{to.colDate}</th><th>{to.colStatus}</th><th>{to.colTotal}</th><th></th></tr>
                 </thead>
                 <tbody>
                   {orders.map(order => (
@@ -94,7 +98,7 @@ export default function AdminOrdersPage() {
                       <td>{formatDateShort(order.created_at)}</td>
                       <td><span className={`badge ${ORDER_STATUS_COLORS[order.status]}`}>{ORDER_STATUS_LABELS[order.status]}</span></td>
                       <td style={{ fontWeight: 'var(--font-semibold)' }}>{formatCurrency(order.total, order.currency)}</td>
-                      <td><Link to={`/admin/orders/${order.id}`} className="btn btn-ghost btn-sm">Manage</Link></td>
+                      <td><Link to={`/admin/orders/${order.id}`} className="btn btn-ghost btn-sm">{to.manage}</Link></td>
                     </tr>
                   ))}
                 </tbody>

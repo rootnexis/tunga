@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
 import { Spinner } from '@/components/shared/Spinner';
 import { formatCurrency, formatDate, formatDateTime, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from '@/utils/formatters';
@@ -26,6 +27,8 @@ export default function AdminOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const { success, error: toastError } = useToast();
+  const { t } = useT();
+  const tod = t.admin.orderDetail;
   const [order, setOrder]     = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -48,34 +51,34 @@ export default function AdminOrderDetailPage() {
     setUpdating(true);
     const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', order.id);
     if (error) {
-      toastError('Failed to update status', error.message);
+      toastError(tod.updateFailed, error.message);
       setUpdating(false);
       return;
     }
     await supabase.from('order_status_history').insert({
       order_id: order.id, from_status: order.status, to_status: newStatus, actor_id: user.id, note: note || null,
     });
-    success('Status updated', ORDER_STATUS_LABELS[newStatus]);
+    success(tod.statusUpdated, ORDER_STATUS_LABELS[newStatus]);
     setNote('');
     setUpdating(false);
     load();
   };
 
   if (isLoading) return <Spinner fullPage />;
-  if (!order) return <div style={{ padding: 'var(--space-8)' }}>Order not found. <Link to="/admin/orders">Back</Link></div>;
+  if (!order) return <div style={{ padding: 'var(--space-8)' }}>{tod.notFound} <Link to="/admin/orders">{tod.back}</Link></div>;
 
   const history = order.status_history?.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) ?? [];
   const nextStatuses = NEXT_STATUSES[order.status] ?? [];
 
   return (
     <>
-      <PageSeo title={`Order #${order.order_number} — Admin`} />
+      <PageSeo title={`${tod.orderTitle} #${order.order_number} — ${t.admin.nav.adminBadge}`} />
       <div className="admin-page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
           <Link to="/admin/orders" className="btn btn-ghost btn-sm"><ArrowLeft size={16} /></Link>
           <div>
-            <h1 className="admin-page-title">Order #{order.order_number}</h1>
-            <p className="admin-page-desc">Placed {formatDate(order.created_at)}</p>
+            <h1 className="admin-page-title">{tod.orderTitle} #{order.order_number}</h1>
+            <p className="admin-page-desc">{tod.placedOn} {formatDate(order.created_at)}</p>
           </div>
         </div>
         <span className={`badge badge-lg ${ORDER_STATUS_COLORS[order.status]}`}>{ORDER_STATUS_LABELS[order.status]}</span>
@@ -84,14 +87,14 @@ export default function AdminOrderDetailPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 'var(--space-5)' }}>
         {/* Status Control */}
         <div className="card">
-          <h2 style={{ fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-4)' }}>Update Status</h2>
+          <h2 style={{ fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-4)' }}>{tod.updateStatus}</h2>
           {nextStatuses.length === 0 ? (
-            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-tertiary)' }}>No further status transitions available.</p>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-tertiary)' }}>{tod.noTransitions}</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
               <div className="form-group">
-                <label className="form-label">Note <span className="form-label-optional">(optional)</span></label>
-                <input type="text" className="input input-sm" value={note} onChange={e => setNote(e.target.value)} placeholder="Internal note for this transition…" />
+                <label className="form-label">{tod.noteLabel} <span className="form-label-optional">({tod.optional})</span></label>
+                <input type="text" className="input input-sm" value={note} onChange={e => setNote(e.target.value)} placeholder={tod.notePlaceholder} />
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
                 {nextStatuses.map(s => (
@@ -106,21 +109,26 @@ export default function AdminOrderDetailPage() {
 
         {/* Customer */}
         <div className="card">
-          <h2 style={{ fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-4)' }}>Customer</h2>
+          <h2 style={{ fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-4)' }}>{tod.customerTitle}</h2>
           {order.customer ? (
             <div style={{ fontSize: 'var(--text-sm)' }}>
               <p style={{ fontWeight: 'var(--font-semibold)' }}>{order.customer.first_name} {order.customer.last_name}</p>
               {order.customer.phone && <p style={{ color: 'var(--color-text-secondary)' }}>{order.customer.phone}</p>}
+            </div>
+          ) : order.shipping_address ? (
+            <div style={{ fontSize: 'var(--text-sm)' }}>
+              <p style={{ fontWeight: 'var(--font-semibold)' }}>{order.shipping_address.first_name} {order.shipping_address.last_name}</p>
+              {order.shipping_address.phone && <p style={{ color: 'var(--color-text-secondary)' }}>{order.shipping_address.phone}</p>}
             </div>
           ) : <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-tertiary)' }}>—</p>}
         </div>
 
         {/* Items */}
         <div className="card" style={{ gridColumn: '1 / -1' }}>
-          <h2 style={{ fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-4)' }}>Items</h2>
+          <h2 style={{ fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-4)' }}>{tod.itemsTitle}</h2>
           <div className="table-wrapper" style={{ border: 'none', padding: 0 }}>
             <table className="table">
-              <thead><tr><th>Product</th><th>SKU</th><th>Qty</th><th>Unit Price</th><th>Line Total</th></tr></thead>
+              <thead><tr><th>{tod.colProduct}</th><th>{tod.colSku}</th><th>{tod.colQty}</th><th>{tod.colUnitPrice}</th><th>{tod.colLineTotal}</th></tr></thead>
               <tbody>
                 {(order.items ?? []).map(item => (
                   <tr key={item.id}>
@@ -139,24 +147,24 @@ export default function AdminOrderDetailPage() {
           </div>
           <div style={{ borderTop: '1px solid var(--color-border)', padding: 'var(--space-4) 0 0', display: 'flex', flexDirection: 'column', gap: 'var(--space-1-5)', alignItems: 'flex-end' }}>
             {[
-              { l: 'Subtotal', v: order.subtotal },
-              { l: 'Delivery', v: order.delivery_fee },
-              ...(order.discount_amount ? [{ l: 'Discount', v: -order.discount_amount }] : []),
-              { l: 'Tax', v: order.tax_amount },
+              { l: tod.subtotal, v: order.subtotal },
+              { l: tod.delivery, v: order.delivery_fee },
+              ...(order.discount_amount ? [{ l: tod.discount, v: -order.discount_amount }] : []),
+              { l: tod.tax, v: order.tax_amount },
             ].map(({ l, v }) => (
               <div key={l} style={{ display: 'flex', gap: 'var(--space-8)', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
                 <span>{l}</span><span>{formatCurrency(v, order.currency)}</span>
               </div>
             ))}
             <div style={{ display: 'flex', gap: 'var(--space-8)', fontWeight: 'var(--font-bold)', fontSize: 'var(--text-base)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-2)', marginTop: 'var(--space-1)' }}>
-              <span>Total</span><span>{formatCurrency(order.total, order.currency)}</span>
+              <span>{tod.total}</span><span>{formatCurrency(order.total, order.currency)}</span>
             </div>
           </div>
         </div>
 
         {/* Timeline */}
         <div className="card" style={{ gridColumn: '1 / -1' }}>
-          <h2 style={{ fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-4)' }}>Status History</h2>
+          <h2 style={{ fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-4)' }}>{tod.statusHistory}</h2>
           <div className="order-status-timeline">
             {history.map((h, i) => (
               <div key={h.id} className="timeline-item">

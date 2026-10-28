@@ -73,8 +73,12 @@ export default function ResetPasswordPage() {
             {/* Top Brand Header */}
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
               <Link to="/" className="login-brand-header" style={{ justifyContent: 'center', margin: '0 auto 12px' }}>
-                <div className="login-brand-icon">
-                  <Zap size={18} />
+                <div className="login-brand-icon" style={{ background: 'transparent', boxShadow: 'none', padding: 0, overflow: 'hidden' }}>
+                  <img
+                    src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
+                    alt="Ituze"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: 'inherit' }}
+                  />
                 </div>
                 <span className="login-brand-name">Ituze</span>
               </Link>

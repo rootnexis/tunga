@@ -29,13 +29,19 @@ export default function ForgotPasswordPage() {
 
   return (
     <>
-      <PageSeo title="Forgot Password" description="Reset your Storefront account password." />
+      <PageSeo title="Forgot Password" description="Reset your Ituze account password." />
       <div className="auth-page">
         <div className="auth-panel">
           <div className="auth-card">
             <Link to="/" className="auth-logo">
-              <div className="auth-logo-icon"><Zap size={18} /></div>
-              Storefront
+              <div className="auth-logo-icon" style={{ background: 'transparent', boxShadow: 'none', padding: 0, overflow: 'hidden' }}>
+                <img
+                  src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
+                  alt="Ituze"
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: 'inherit' }}
+                />
+              </div>
+              Ituze
             </Link>
 
             {sent ? (

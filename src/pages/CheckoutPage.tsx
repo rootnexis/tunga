@@ -144,8 +144,14 @@ export default function CheckoutPage() {
       <div className="checkout-header">
         <div className="container checkout-header-inner">
           <Link to="/" className="auth-logo" style={{ fontSize: 'var(--text-base)' }}>
-            <div className="auth-logo-icon" style={{ width: 30, height: 30 }}><Zap size={15} /></div>
-            Storefront
+            <div className="auth-logo-icon" style={{ width: 32, height: 32, background: 'transparent', boxShadow: 'none', padding: 0, overflow: 'hidden' }}>
+              <img
+                src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
+                alt="Ituze"
+                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: 'inherit' }}
+              />
+            </div>
+            Ituze
           </Link>
 
           <div className="checkout-steps">

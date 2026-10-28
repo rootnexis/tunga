@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Plus, Pencil, Trash2, Tag, Search, ToggleLeft, ToggleRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/contexts/ToastContext';
+import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
 import { Spinner } from '@/components/shared/Spinner';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -64,6 +65,8 @@ interface CouponModalProps {
 
 function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
   const { success, error: toastError } = useToast();
+  const { t } = useT();
+  const tcp = t.admin.coupons;
   const [form, setForm] = useState<CouponForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Partial<CouponForm>>({});
@@ -113,8 +116,8 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
       : await supabase.from('coupons').insert(payload);
 
     setSaving(false);
-    if (error) { toastError('Save failed', error.message); return; }
-    success(editing ? 'Coupon updated' : 'Coupon created');
+    if (error) { toastError('Error', error.message); return; }
+    success(editing ? tcp.couponUpdated : tcp.couponCreated);
     onSave();
     onClose();
   };
@@ -129,10 +132,10 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={editing ? 'Edit Coupon' : 'Create Coupon'}
+        aria-label={editing ? tcp.editCoupon : tcp.createCoupon}
       >
         <div className="modal-header">
-          <h2 className="modal-title">{editing ? 'Edit Coupon' : 'Create Coupon'}</h2>
+          <h2 className="modal-title">{editing ? tcp.editCoupon : tcp.createCoupon}</h2>
           <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Close">×</button>
         </div>
 
@@ -140,7 +143,7 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
           <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             {/* Code */}
             <div className="form-group">
-              <label className="form-label" htmlFor="coupon-code">Code <span className="form-required">*</span></label>
+              <label className="form-label" htmlFor="coupon-code">{tcp.codeLabel} <span className="form-required">*</span></label>
               <input
                 id="coupon-code"
                 type="text"
@@ -156,22 +159,22 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
             {/* Type + Value */}
             <div className="admin-form-row-2col">
               <div className="form-group">
-                <label className="form-label" htmlFor="coupon-type">Type <span className="form-required">*</span></label>
+                <label className="form-label" htmlFor="coupon-type">{tcp.typeLabel} <span className="form-required">*</span></label>
                 <select
                   id="coupon-type"
                   className="input"
                   value={form.type}
                   onChange={e => set('type', e.target.value)}
                 >
-                  <option value="percentage">Percentage (%)</option>
-                  <option value="fixed">Fixed amount</option>
-                  <option value="free_shipping">Free shipping</option>
+                  <option value="percentage">{tcp.percentage}</option>
+                  <option value="fixed">{tcp.fixedAmount}</option>
+                  <option value="free_shipping">{tcp.freeShipping}</option>
                 </select>
               </div>
               {form.type !== 'free_shipping' && (
                 <div className="form-group">
                   <label className="form-label" htmlFor="coupon-value">
-                    Value <span className="form-required">*</span>
+                    {tcp.valueLabel} <span className="form-required">*</span>
                     <span className="form-label-optional">
                       {form.type === 'percentage' ? ' (%)' : ' ($)'}
                     </span>
@@ -195,7 +198,7 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
             <div className="admin-form-row-2col">
               <div className="form-group">
                 <label className="form-label" htmlFor="coupon-min">
-                  Min order <span className="form-label-optional">($)</span>
+                  {tcp.minOrderLabel} <span className="form-label-optional">($)</span>
                 </label>
                 <input
                   id="coupon-min"
@@ -211,7 +214,7 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
               {form.type === 'percentage' && (
                 <div className="form-group">
                   <label className="form-label" htmlFor="coupon-max-discount">
-                    Max discount <span className="form-label-optional">($)</span>
+                    {tcp.maxDiscountLabel} <span className="form-label-optional">($)</span>
                   </label>
                   <input
                     id="coupon-max-discount"
@@ -221,7 +224,7 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
                     onChange={e => set('max_discount_amount', e.target.value)}
                     min="0"
                     step="0.01"
-                    placeholder="Unlimited"
+                    placeholder={tcp.unlimited}
                   />
                 </div>
               )}
@@ -231,7 +234,7 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
             <div className="admin-form-row-2col">
               <div className="form-group">
                 <label className="form-label" htmlFor="coupon-max-uses">
-                  Max uses <span className="form-label-optional">(total)</span>
+                  {tcp.maxUsesLabel}
                 </label>
                 <input
                   id="coupon-max-uses"
@@ -241,11 +244,11 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
                   onChange={e => set('max_uses', e.target.value)}
                   min="1"
                   step="1"
-                  placeholder="Unlimited"
+                  placeholder={tcp.unlimited}
                 />
               </div>
               <div className="form-group">
-                <label className="form-label" htmlFor="coupon-per-customer">Per customer</label>
+                <label className="form-label" htmlFor="coupon-per-customer">{tcp.perCustomerLabel}</label>
                 <input
                   id="coupon-per-customer"
                   type="number"
@@ -261,7 +264,7 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
             {/* Dates */}
             <div className="admin-form-row-2col">
               <div className="form-group">
-                <label className="form-label" htmlFor="coupon-starts">Starts at</label>
+                <label className="form-label" htmlFor="coupon-starts">{tcp.startsAtLabel}</label>
                 <input
                   id="coupon-starts"
                   type="date"
@@ -271,7 +274,7 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label" htmlFor="coupon-expires">Expires at</label>
+                <label className="form-label" htmlFor="coupon-expires">{tcp.expiresAtLabel}</label>
                 <input
                   id="coupon-expires"
                   type="date"
@@ -293,15 +296,15 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
                 {form.is_active ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
               </button>
               <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)' }}>
-                {form.is_active ? 'Active' : 'Inactive'}
+                {form.is_active ? tcp.active : tcp.inactive}
               </span>
             </div>
           </div>
 
           <div className="modal-footer">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn btn-ghost" onClick={onClose}>{tcp.cancel}</button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving…' : editing ? 'Save Changes' : 'Create Coupon'}
+              {saving ? tcp.saving : editing ? tcp.saveChanges : tcp.createCoupon}
             </button>
           </div>
         </form>
@@ -313,6 +316,8 @@ function CouponModal({ isOpen, onClose, onSave, editing }: CouponModalProps) {
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function AdminCouponsPage() {
   const { success, error: toastError } = useToast();
+  const { t } = useT();
+  const tcp = t.admin.coupons;
   const [coupons, setCoupons]   = useState<Coupon[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch]     = useState('');
@@ -336,16 +341,16 @@ export default function AdminCouponsPage() {
       .from('coupons')
       .update({ is_active: !coupon.is_active })
       .eq('id', coupon.id);
-    if (error) { toastError('Update failed', error.message); return; }
-    success(coupon.is_active ? 'Coupon deactivated' : 'Coupon activated');
+    if (error) { toastError('Error', error.message); return; }
+    success(coupon.is_active ? tcp.couponDeactivated : tcp.couponActivated);
     load();
   };
 
   const handleDelete = async () => {
     if (!deleting) return;
     const { error } = await supabase.from('coupons').delete().eq('id', deleting.id);
-    if (error) { toastError('Delete failed', error.message); setDeleting(null); return; }
-    success('Coupon deleted');
+    if (error) { toastError('Error', error.message); setDeleting(null); return; }
+    success(tcp.couponDeleted);
     setDeleting(null);
     load();
   };
@@ -356,19 +361,19 @@ export default function AdminCouponsPage() {
   const formatValue = (c: Coupon) => {
     if (c.type === 'percentage')    return `${c.value}%`;
     if (c.type === 'fixed')         return formatCurrency(c.value, 'RWF');
-    return 'Free shipping';
+    return tcp.freeShipping;
   };
 
   return (
     <>
-      <PageSeo title="Coupons — Admin" />
+      <PageSeo title={`${tcp.title} — ${t.admin.nav.adminBadge}`} />
       <div className="admin-page-header">
         <div>
-          <h1 className="admin-page-title">Coupons</h1>
-          <p className="admin-page-desc">{coupons.length} coupon{coupons.length !== 1 ? 's' : ''}</p>
+          <h1 className="admin-page-title">{tcp.title}</h1>
+          <p className="admin-page-desc">{coupons.length} {tcp.totalCoupons}</p>
         </div>
         <button id="create-coupon-btn" className="btn btn-primary" onClick={openCreate}>
-          <Plus size={16} /> Create Coupon
+          <Plus size={16} /> {tcp.createCoupon}
         </button>
       </div>
 
@@ -381,7 +386,7 @@ export default function AdminCouponsPage() {
                 id="coupon-search"
                 type="search"
                 className="input input-sm"
-                placeholder="Search by code…"
+                placeholder={tcp.searchPlaceholder}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 style={{ paddingLeft: 'var(--space-9)' }}
@@ -396,8 +401,8 @@ export default function AdminCouponsPage() {
           <div style={{ padding: 'var(--space-8)' }}>
             <EmptyState
               icon={Tag}
-              title="No coupons yet"
-              description="Create your first discount code to attract more customers."
+              title={tcp.noCoupons}
+              description={tcp.noCouponsDesc}
             />
           </div>
         ) : (
@@ -405,12 +410,12 @@ export default function AdminCouponsPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Code</th>
-                  <th>Type / Value</th>
-                  <th>Min Order</th>
-                  <th>Uses</th>
-                  <th>Expires</th>
-                  <th>Status</th>
+                  <th>{tcp.colCode}</th>
+                  <th>{tcp.colTypeValue}</th>
+                  <th>{tcp.colMinOrder}</th>
+                  <th>{tcp.colUses}</th>
+                  <th>{tcp.colExpires}</th>
+                  <th>{tcp.colStatus}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -436,7 +441,7 @@ export default function AdminCouponsPage() {
                         {formatValue(c)}
                       </p>
                       <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)', textTransform: 'capitalize' }}>
-                        {c.type.replace('_', ' ')}
+                        {c.type === 'percentage' ? tcp.percentage : c.type === 'fixed' ? tcp.fixedAmount : tcp.freeShipping}
                       </p>
                     </td>
                     <td style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)' }}>
@@ -454,9 +459,9 @@ export default function AdminCouponsPage() {
                         className={`badge ${c.is_active ? 'badge-success' : 'badge-neutral'}`}
                         style={{ cursor: 'pointer', border: 'none' }}
                         onClick={() => handleToggleActive(c)}
-                        aria-label={c.is_active ? 'Deactivate coupon' : 'Activate coupon'}
+                        aria-label={c.is_active ? tcp.inactive : tcp.active}
                       >
-                        {c.is_active ? 'Active' : 'Inactive'}
+                        {c.is_active ? tcp.active : tcp.inactive}
                       </button>
                     </td>
                     <td>
@@ -464,7 +469,7 @@ export default function AdminCouponsPage() {
                         <button
                           className="btn btn-ghost btn-sm btn-icon"
                           onClick={() => openEdit(c)}
-                          aria-label={`Edit ${c.code}`}
+                          aria-label={`${tcp.editCoupon} ${c.code}`}
                         >
                           <Pencil size={13} />
                         </button>
@@ -472,7 +477,7 @@ export default function AdminCouponsPage() {
                           className="btn btn-ghost btn-sm btn-icon"
                           style={{ color: 'var(--red-500)' }}
                           onClick={() => setDeleting(c)}
-                          aria-label={`Delete ${c.code}`}
+                          aria-label={`${tcp.deleteBtn} ${c.code}`}
                         >
                           <Trash2 size={13} />
                         </button>
@@ -497,9 +502,9 @@ export default function AdminCouponsPage() {
         isOpen={!!deleting}
         onClose={() => setDeleting(null)}
         onConfirm={handleDelete}
-        title="Delete Coupon"
-        message={`Delete coupon "${deleting?.code}"? This cannot be undone.`}
-        confirmLabel="Delete"
+        title={tcp.deleteTitle}
+        message={tcp.deleteConfirm.replace('{code}', deleting?.code ?? '')}
+        confirmLabel={tcp.deleteBtn}
       />
     </>
   );

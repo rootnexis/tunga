@@ -131,8 +131,12 @@ export default function RegisterPage() {
             </div>
 
             <div className="login-banner-footer-note">
-              <div className="login-brand-icon-sm">
-                <Zap size={16} />
+              <div className="login-brand-icon-sm" style={{ background: 'transparent', padding: 0, overflow: 'hidden' }}>
+                <img
+                  src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
+                  alt={t.siteName}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: 'inherit' }}
+                />
               </div>
               <span>Elevating Your Everyday Style & Living</span>
             </div>
@@ -147,8 +151,12 @@ export default function RegisterPage() {
               </Link>
 
               <Link to="/" className="login-brand-header">
-                <div className="login-brand-icon">
-                  <Zap size={18} />
+                <div className="login-brand-icon" style={{ background: 'transparent', boxShadow: 'none', padding: 0, overflow: 'hidden' }}>
+                  <img
+                    src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
+                    alt={t.siteName}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: 'inherit' }}
+                  />
                 </div>
                 <span className="login-brand-name">{t.siteName}</span>
               </Link>

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Search, CheckCircle, XCircle, Flag, MessageSquare, Star } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/contexts/ToastContext';
+import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
 import { Spinner } from '@/components/shared/Spinner';
 import { Pagination } from '@/components/shared/Pagination';
@@ -31,6 +32,8 @@ function StarDisplay({ rating }: { rating: number }) {
 
 export default function AdminReviewsPage() {
   const { success, error: toastError } = useToast();
+  const { t } = useT();
+  const tr = t.admin.reviews;
 
   const [reviews, setReviews] = useState<Review[]>([]);
   const [total, setTotal] = useState(0);
@@ -79,8 +82,8 @@ export default function AdminReviewsPage() {
       .from('reviews')
       .update({ is_approved: true, is_flagged: false })
       .eq('id', review.id);
-    if (error) toastError('Failed to approve review');
-    else { success('Review approved'); load(); }
+    if (error) toastError('Error');
+    else { success(tr.reviewApproved); load(); }
   };
 
   const handleFlag = async (review: Review) => {
@@ -88,15 +91,15 @@ export default function AdminReviewsPage() {
       .from('reviews')
       .update({ is_flagged: !review.is_flagged })
       .eq('id', review.id);
-    if (error) toastError('Failed to update review');
-    else { success(review.is_flagged ? 'Flag removed' : 'Review flagged'); load(); }
+    if (error) toastError('Error');
+    else { success(review.is_flagged ? tr.flagRemoved : tr.reviewFlagged); load(); }
   };
 
   const handleDelete = async () => {
     if (!deleting) return;
     const { error } = await supabase.from('reviews').delete().eq('id', deleting.id);
-    if (error) toastError('Failed to delete review');
-    else { success('Review deleted'); setDeleting(null); load(); }
+    if (error) toastError('Error');
+    else { success(tr.reviewDeleted); setDeleting(null); load(); }
   };
 
   const handleSaveResponse = async () => {
@@ -106,26 +109,26 @@ export default function AdminReviewsPage() {
       .from('reviews')
       .update({ admin_response: responseText.trim() || null })
       .eq('id', responding.id);
-    if (error) toastError('Failed to save response');
-    else { success('Response saved'); setResponding(null); setResponseText(''); load(); }
+    if (error) toastError('Error');
+    else { success(tr.responseSaved); setResponding(null); setResponseText(''); load(); }
     setSavingResponse(false);
   };
 
   const FILTERS: { label: string; value: ReviewFilter }[] = [
-    { label: 'Pending',  value: 'pending' },
-    { label: 'Approved', value: 'approved' },
-    { label: 'Flagged',  value: 'flagged' },
-    { label: 'All',      value: 'all' },
+    { label: tr.filterPending,  value: 'pending' },
+    { label: tr.filterApproved, value: 'approved' },
+    { label: tr.filterFlagged,  value: 'flagged' },
+    { label: tr.filterAll,      value: 'all' },
   ];
 
   return (
     <>
-      <PageSeo title="Reviews — Admin" />
+      <PageSeo title={`${tr.title} — ${t.admin.nav.adminBadge}`} />
 
       <div className="admin-page-header">
         <div>
-          <h1 className="admin-page-title">Reviews</h1>
-          <p className="admin-page-desc">{total.toLocaleString()} reviews</p>
+          <h1 className="admin-page-title">{tr.title}</h1>
+          <p className="admin-page-desc">{total.toLocaleString()} {tr.totalReviews}</p>
         </div>
       </div>
 
@@ -137,7 +140,7 @@ export default function AdminReviewsPage() {
               <Search size={14} className="input-icon-left" />
               <input
                 type="search" className="input input-sm"
-                placeholder="Search review title…"
+                placeholder={tr.searchPlaceholder}
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }}
                 style={{ paddingLeft: 'var(--space-9)' }}
@@ -162,7 +165,7 @@ export default function AdminReviewsPage() {
           <div style={{ padding: 'var(--space-12)' }}><Spinner fullPage /></div>
         ) : reviews.length === 0 ? (
           <div style={{ padding: 'var(--space-8)' }}>
-            <EmptyState title="No reviews" description="No reviews match your current filter." />
+            <EmptyState title={tr.noReviews} description={tr.noReviewsDesc} />
           </div>
         ) : (
           <>
@@ -170,13 +173,13 @@ export default function AdminReviewsPage() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Product</th>
-                    <th>Customer</th>
-                    <th>Rating</th>
-                    <th>Review</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>{tr.colProduct}</th>
+                    <th>{tr.colCustomer}</th>
+                    <th>{tr.colRating}</th>
+                    <th>{tr.colReview}</th>
+                    <th>{tr.colDate}</th>
+                    <th>{tr.colStatus}</th>
+                    <th>{tr.colActions}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -202,7 +205,7 @@ export default function AdminReviewsPage() {
                         )}
                         {review.admin_response && (
                           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', marginTop: 2 }}>
-                            ↳ Admin responded
+                            {tr.adminResponded}
                           </p>
                         )}
                       </td>
@@ -211,10 +214,10 @@ export default function AdminReviewsPage() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-                          {review.is_approved && <span className="badge badge-success badge-sm">Approved</span>}
-                          {review.is_flagged && <span className="badge badge-danger badge-sm">Flagged</span>}
-                          {!review.is_approved && !review.is_flagged && <span className="badge badge-neutral badge-sm">Pending</span>}
-                          {review.is_verified_purchase && <span className="badge badge-primary badge-sm">Verified</span>}
+                          {review.is_approved && <span className="badge badge-success badge-sm">{tr.approved}</span>}
+                          {review.is_flagged && <span className="badge badge-danger badge-sm">{tr.flagged}</span>}
+                          {!review.is_approved && !review.is_flagged && <span className="badge badge-neutral badge-sm">{tr.pending}</span>}
+                          {review.is_verified_purchase && <span className="badge badge-primary badge-sm">{tr.verified}</span>}
                         </div>
                       </td>
                       <td>
@@ -223,8 +226,8 @@ export default function AdminReviewsPage() {
                             <button
                               className="btn btn-ghost btn-sm btn-icon"
                               onClick={() => handleApprove(review)}
-                              title="Approve"
-                              aria-label="Approve review"
+                              title={tr.approve}
+                              aria-label={tr.approve}
                             >
                               <CheckCircle size={15} style={{ color: 'var(--color-success)' }} />
                             </button>
@@ -232,24 +235,24 @@ export default function AdminReviewsPage() {
                           <button
                             className="btn btn-ghost btn-sm btn-icon"
                             onClick={() => handleFlag(review)}
-                            title={review.is_flagged ? 'Unflag' : 'Flag'}
-                            aria-label={review.is_flagged ? 'Remove flag' : 'Flag review'}
+                            title={review.is_flagged ? tr.unflag : tr.flag}
+                            aria-label={review.is_flagged ? tr.unflag : tr.flag}
                           >
                             <Flag size={15} style={{ color: review.is_flagged ? 'var(--color-danger)' : 'var(--color-text-tertiary)' }} />
                           </button>
                           <button
                             className="btn btn-ghost btn-sm btn-icon"
                             onClick={() => { setResponding(review); setResponseText(review.admin_response ?? ''); }}
-                            title="Respond"
-                            aria-label="Add admin response"
+                            title={tr.respond}
+                            aria-label={tr.respond}
                           >
                             <MessageSquare size={15} />
                           </button>
                           <button
                             className="btn btn-ghost btn-sm btn-icon"
                             onClick={() => setDeleting(review)}
-                            title="Delete"
-                            aria-label="Delete review"
+                            title={tr.delete}
+                            aria-label={tr.delete}
                           >
                             <XCircle size={15} style={{ color: 'var(--color-danger)' }} />
                           </button>
@@ -272,12 +275,12 @@ export default function AdminReviewsPage() {
         <div className="modal-backdrop" onClick={() => setResponding(null)}>
           <div className="modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3 className="modal-title">Admin Response</h3>
+              <h3 className="modal-title">{tr.modalTitle}</h3>
               <button className="modal-close" onClick={() => setResponding(null)} aria-label="Close">×</button>
             </div>
             <div className="modal-body">
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-3)' }}>
-                Responding to: <strong>{responding.profile?.first_name}'s</strong> review of <strong>{responding.product?.name}</strong>
+                {tr.respondingTo} <strong>{responding.profile?.first_name}</strong> — {tr.reviewOf} <strong>{responding.product?.name}</strong>
               </p>
               {responding.body && (
                 <blockquote style={{ borderLeft: '3px solid var(--color-border)', paddingLeft: 'var(--space-3)', color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-4)', fontStyle: 'italic' }}>
@@ -288,16 +291,16 @@ export default function AdminReviewsPage() {
                 className="input"
                 rows={4}
                 style={{ resize: 'vertical' }}
-                placeholder="Write your public response…"
+                placeholder={tr.responsePlaceholder}
                 value={responseText}
                 onChange={e => setResponseText(e.target.value)}
                 autoFocus
               />
             </div>
             <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setResponding(null)}>Cancel</button>
+              <button className="btn btn-ghost" onClick={() => setResponding(null)}>{tr.cancel}</button>
               <button className="btn btn-primary" onClick={handleSaveResponse} disabled={savingResponse}>
-                {savingResponse ? 'Saving…' : 'Save Response'}
+                {savingResponse ? tr.saving : tr.saveResponse}
               </button>
             </div>
           </div>
@@ -308,9 +311,9 @@ export default function AdminReviewsPage() {
         isOpen={!!deleting}
         onClose={() => setDeleting(null)}
         onConfirm={handleDelete}
-        title="Delete Review"
-        message={`Permanently delete this review by ${deleting?.profile?.first_name}? This cannot be undone.`}
-        confirmLabel="Delete"
+        title={tr.deleteTitle}
+        message={tr.deleteConfirm}
+        confirmLabel={tr.delete}
         variant="danger"
       />
     </>

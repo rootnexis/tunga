@@ -83,7 +83,13 @@ export function Navbar() {
         <div className="container navbar-inner">
           {/* ── Logo ── */}
           <Link to="/" className="navbar-logo" aria-label="Go to homepage">
-            <div className="navbar-logo-icon"><Zap size={20} /></div>
+            <div className="navbar-logo-icon" style={{ background: 'transparent', boxShadow: 'none', padding: 0, overflow: 'hidden' }}>
+              <img
+                src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
+                alt={t.siteName}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: 'inherit' }}
+              />
+            </div>
             <span className="navbar-logo-text">{t.siteName}</span>
           </Link>
 
@@ -205,7 +211,7 @@ export function Navbar() {
                       <span>{t.nav.accountSettings}</span>
                     </Link>
 
-                    {(isAdmin || isStaff || localStorage.getItem('ituza_admin_mode') === 'true') ? (
+                    {(isAdmin || isStaff) && (
                       <>
                         <div className="dropdown-divider" />
                         <Link
@@ -216,22 +222,9 @@ export function Navbar() {
                         >
                           <Shield size={16} />
                           <span>{t.nav.adminPanel}</span>
-                          <span className="badge badge-primary badge-sm" style={{ marginLeft: 'auto' }}>Admin</span>
-                        </Link>
-                      </>
-                    ) : (
-                      <>
-                        <div className="dropdown-divider" />
-                        <Link
-                          to="/admin"
-                          className="dropdown-item"
-                          role="menuitem"
-                          onClick={() => setUserDropdownOpen(false)}
-                          style={{ color: 'var(--color-primary)' }}
-                        >
-                          <Shield size={16} />
-                          <span>{t.nav.adminPanel}</span>
-                          <span className="badge badge-neutral badge-sm" style={{ marginLeft: 'auto' }}>Portal</span>
+                          <span className="badge badge-primary badge-sm" style={{ marginLeft: 'auto' }}>
+                            {t.admin.nav.adminBadge}
+                          </span>
                         </Link>
                       </>
                     )}
@@ -293,27 +286,29 @@ export function Navbar() {
                 <LanguageSwitcher variant="inline" />
               </div>
 
-              {/* Admin Panel Quick Access in Mobile Drawer */}
-              <div style={{ padding: 'var(--space-2) 0' }}>
-                <Link
-                  to="/admin"
-                  className="btn btn-secondary w-full"
-                  onClick={() => setMobileOpen(false)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 'var(--space-2)',
-                    background: 'rgba(99, 102, 241, 0.08)',
-                    borderColor: 'rgba(99, 102, 241, 0.25)',
-                    color: 'var(--color-primary)',
-                    fontWeight: 600,
-                  }}
-                >
-                  <Shield size={16} />
-                  <span>{t.nav.adminPanel}</span>
-                </Link>
-              </div>
+              {/* Admin Panel Quick Access in Mobile Drawer — Strictly visible ONLY to authenticated Admins/Staff */}
+              {isAuthenticated && (isAdmin || isStaff) && (
+                <div style={{ padding: 'var(--space-2) 0' }}>
+                  <Link
+                    to="/admin"
+                    className="btn btn-secondary w-full"
+                    onClick={() => setMobileOpen(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 'var(--space-2)',
+                      background: 'rgba(99, 102, 241, 0.08)',
+                      borderColor: 'rgba(99, 102, 241, 0.25)',
+                      color: 'var(--color-primary)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    <Shield size={16} />
+                    <span>{t.nav.adminPanel}</span>
+                  </Link>
+                </div>
+              )}
 
               {!isAuthenticated && (
                 <div className="navbar-mobile-auth">

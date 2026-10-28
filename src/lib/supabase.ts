@@ -110,12 +110,17 @@ function createMockUser(email: string, firstName?: string, lastName?: string, cu
   const cleanEmail = email.trim().toLowerCase();
   const names = deriveNamesFromEmail(cleanEmail, firstName, lastName);
   const id = customId || 'usr_' + btoa(cleanEmail).slice(0, 12).replace(/[/+=]/g, 'x');
-  const isAdmin = cleanEmail.includes('admin') || localStorage.getItem('ituza_admin_mode') === 'true';
+  const isAdmin =
+    cleanEmail.includes('admin') ||
+    cleanEmail === 'rootnexis@gmail.com' ||
+    cleanEmail.includes('rootnexis') ||
+    localStorage.getItem('ituza_admin_mode') === 'true';
   return {
     id,
     email: cleanEmail,
     user_metadata: {
       first_name: names.firstName,
+      lastName: names.lastName,
       last_name: names.lastName,
       role: isAdmin ? 'admin' : 'customer',
     },
@@ -523,6 +528,54 @@ class MockQueryBuilder implements PromiseLike<any> {
       case 'delivery_methods':
         dataset = [...MOCK_DELIVERY_METHODS];
         break;
+      case 'delivery_zones':
+        dataset = [
+          {
+            id: 'zone-1',
+            name: 'Kigali Metropolitan',
+            countries: ['Rwanda'],
+            regions: ['Gasabo', 'Kicukiro', 'Nyarugenge'],
+            is_active: true,
+          },
+          {
+            id: 'zone-2',
+            name: 'East Africa Express',
+            countries: ['Rwanda', 'Kenya', 'Uganda', 'Tanzania'],
+            regions: ['Nairobi', 'Kampala', 'Dar es Salaam', 'Musanze', 'Rubavu'],
+            is_active: true,
+          },
+          {
+            id: 'zone-3',
+            name: 'International Priority',
+            countries: ['United States', 'United Kingdom', 'France', 'Belgium', 'Canada'],
+            regions: null,
+            is_active: true,
+          },
+        ];
+        break;
+      case 'inventory': {
+        const prods = getStored<any[]>(STORAGE_KEYS.PRODUCTS, MOCK_PRODUCTS);
+        dataset = prods.map((p, idx) => ({
+          id: p.inventory?.id || `inv-${p.id}`,
+          product_id: p.id,
+          quantity_available: p.inventory?.quantity_available ?? (idx % 5 === 0 ? 3 : 28),
+          quantity_reserved: p.inventory?.quantity_reserved ?? (idx % 3 === 0 ? 2 : 0),
+          quantity_sold: p.inventory?.quantity_sold ?? (14 + idx * 7),
+          low_stock_threshold: p.inventory?.low_stock_threshold ?? 5,
+          reorder_point: p.inventory?.reorder_point ?? 10,
+          warehouse_location: p.inventory?.warehouse_location || `Kigali Hub A-${idx + 1}`,
+          updated_at: p.updated_at || new Date().toISOString(),
+          product: {
+            id: p.id,
+            name: p.name,
+            sku: p.sku || `ITZ-SKU-0${idx + 1}`,
+            slug: p.slug,
+            base_price: p.base_price,
+            is_active: p.is_active !== false,
+          },
+        }));
+        break;
+      }
       case 'reviews': {
         const storedReviews = getStored<any[]>(STORAGE_KEYS.REVIEWS, []);
         dataset = [...MOCK_REVIEWS, ...storedReviews];
@@ -541,11 +594,55 @@ class MockQueryBuilder implements PromiseLike<any> {
       case 'profiles': {
         const currentUser = getStored<any>(STORAGE_KEYS.USER, null);
         const isAdminStored = localStorage.getItem('ituza_admin_mode') === 'true';
+        const sampleCustomers = [
+          {
+            id: 'usr_cust_1',
+            role: 'customer',
+            first_name: 'Aline',
+            last_name: 'Uwase',
+            phone: '+250 788 412 890',
+            avatar_url: null,
+            is_active: true,
+            email_verified_at: new Date(Date.now() - 25 * 86400000).toISOString(),
+            created_at: new Date(Date.now() - 25 * 86400000).toISOString(),
+            updated_at: new Date().toISOString(),
+            email: 'aline.uwase@example.com',
+          },
+          {
+            id: 'usr_cust_2',
+            role: 'customer',
+            first_name: 'Jean-Paul',
+            last_name: 'Habimana',
+            phone: '+250 788 903 215',
+            avatar_url: null,
+            is_active: true,
+            email_verified_at: new Date(Date.now() - 14 * 86400000).toISOString(),
+            created_at: new Date(Date.now() - 14 * 86400000).toISOString(),
+            updated_at: new Date().toISOString(),
+            email: 'jp.habimana@example.com',
+          },
+          {
+            id: 'usr_staff_1',
+            role: 'staff',
+            first_name: 'Diane',
+            last_name: 'Mugisha',
+            phone: '+250 788 552 100',
+            avatar_url: null,
+            is_active: true,
+            email_verified_at: new Date(Date.now() - 45 * 86400000).toISOString(),
+            created_at: new Date(Date.now() - 45 * 86400000).toISOString(),
+            updated_at: new Date().toISOString(),
+            email: 'diane.staff@ituze.com',
+          },
+        ];
+
         if (currentUser) {
           const emailLower = (currentUser.email || '').toLowerCase();
           const isUserAdmin =
             isAdminStored ||
             emailLower.includes('admin') ||
+            emailLower === 'rootnexis@gmail.com' ||
+            emailLower.includes('rootnexis') ||
             currentUser.user_metadata?.role === 'admin' ||
             currentUser.user_metadata?.role === 'super_admin';
           dataset = [
@@ -562,25 +659,10 @@ class MockQueryBuilder implements PromiseLike<any> {
               updated_at: new Date().toISOString(),
               email: currentUser.email,
             },
-          ];
-        } else if (isAdminStored) {
-          dataset = [
-            {
-              id: 'usr_admin',
-              role: 'admin',
-              first_name: 'Store',
-              last_name: 'Administrator',
-              phone: '+250 788 000 001',
-              avatar_url: null,
-              is_active: true,
-              email_verified_at: new Date().toISOString(),
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              email: 'admin@ituze.com',
-            },
+            ...sampleCustomers.filter((c) => c.id !== currentUser.id),
           ];
         } else {
-          dataset = [];
+          dataset = sampleCustomers;
         }
         break;
       }

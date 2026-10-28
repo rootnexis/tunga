@@ -85,8 +85,12 @@ export function Footer() {
           {/* Brand */}
           <div className="footer-brand">
             <Link to="/" className="footer-logo" aria-label="Home">
-              <div className="footer-logo-icon">
-                <Zap size={18} />
+              <div className="footer-logo-icon" style={{ background: 'transparent', boxShadow: 'none', padding: 0, overflow: 'hidden' }}>
+                <img
+                  src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
+                  alt={t.siteName}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: 'inherit' }}
+                />
               </div>
               <span>{t.siteName}</span>
             </Link>

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/contexts/ToastContext';
+import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
 import { Spinner } from '@/components/shared/Spinner';
 import { Pagination } from '@/components/shared/Pagination';
@@ -21,6 +22,8 @@ const ROLE_COLORS: Record<UserRole, string> = {
 
 export default function AdminCustomersPage() {
   const { success } = useToast();
+  const { t } = useT();
+  const tc = t.admin.customers;
   const [customers, setCustomers] = useState<Profile[]>([]);
   const [total, setTotal]         = useState(0);
   const [page, setPage]           = useState(1);
@@ -46,17 +49,21 @@ export default function AdminCustomersPage() {
 
   const updateRole = async (profile: Profile, role: UserRole) => {
     await supabase.from('profiles').update({ role }).eq('id', profile.id);
-    success('Role updated', `${profile.first_name} is now ${role}`);
+    const roleLabel = tc.roles[role] ?? role;
+    success(
+      tc.roleUpdated,
+      tc.roleUpdatedDesc.replace('{name}', profile.first_name ?? '').replace('{role}', roleLabel)
+    );
     load();
   };
 
   return (
     <>
-      <PageSeo title="Customers — Admin" />
+      <PageSeo title={`${tc.title} — ${t.admin.nav.adminBadge}`} />
       <div className="admin-page-header">
         <div>
-          <h1 className="admin-page-title">Customers</h1>
-          <p className="admin-page-desc">{total.toLocaleString()} total users</p>
+          <h1 className="admin-page-title">{tc.title}</h1>
+          <p className="admin-page-desc">{total.toLocaleString()} {tc.totalUsers}</p>
         </div>
       </div>
 
@@ -64,7 +71,7 @@ export default function AdminCustomersPage() {
         <div className="admin-table-toolbar">
           <div className="input-group" style={{ width: '100%', maxWidth: 280 }}>
             <Search size={14} className="input-icon-left" />
-            <input type="search" className="input input-sm" placeholder="Search by name…" value={search}
+            <input type="search" className="input input-sm" placeholder={tc.searchPlaceholder} value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }} style={{ paddingLeft: 'var(--space-9)' }} />
           </div>
         </div>
@@ -75,7 +82,7 @@ export default function AdminCustomersPage() {
           <>
             <div className="table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
               <table className="table">
-                <thead><tr><th>User</th><th>Role</th><th>Joined</th><th>Active</th><th>Change Role</th></tr></thead>
+                <thead><tr><th>{tc.colUser}</th><th>{tc.colRole}</th><th>{tc.colJoined}</th><th>{tc.colActive}</th><th>{tc.colChangeRole}</th></tr></thead>
                 <tbody>
                   {customers.map(c => (
                     <tr key={c.id}>
@@ -88,14 +95,19 @@ export default function AdminCustomersPage() {
                             <p style={{ fontWeight: 'var(--font-medium)', fontSize: 'var(--text-sm)' }}>
                               {c.first_name} {c.last_name}
                             </p>
+                            {c.email && (
+                              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)' }}>
+                                {c.email}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
-                      <td><span className={`badge ${ROLE_COLORS[c.role]}`}>{c.role}</span></td>
+                      <td><span className={`badge ${ROLE_COLORS[c.role]}`}>{tc.roles[c.role] ?? c.role}</span></td>
                       <td style={{ color: 'var(--color-text-secondary)' }}>{formatDate(c.created_at)}</td>
                       <td>
                         <span className={`badge ${c.is_active ? 'badge-success' : 'badge-danger'}`}>
-                          {c.is_active ? 'Active' : 'Inactive'}
+                          {c.is_active ? tc.active : tc.inactive}
                         </span>
                       </td>
                       <td>
@@ -103,10 +115,10 @@ export default function AdminCustomersPage() {
                           className="input input-sm"
                           value={c.role}
                           onChange={e => updateRole(c, e.target.value as UserRole)}
-                          style={{ width: 120 }}
-                          aria-label="Change role"
+                          style={{ width: 135 }}
+                          aria-label={tc.colChangeRole}
                         >
-                          {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                          {ROLES.map(r => <option key={r} value={r}>{tc.roles[r] ?? r}</option>)}
                         </select>
                       </td>
                     </tr>

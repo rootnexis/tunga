@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Plus, Pencil, Trash2, Globe, Truck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/contexts/ToastContext';
+import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
 import { Spinner } from '@/components/shared/Spinner';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -29,6 +30,8 @@ interface ZoneModalProps {
 
 function ZoneModal({ isOpen, onClose, onSave, editing }: ZoneModalProps) {
   const { success, error: toastError } = useToast();
+  const { t } = useT();
+  const tdel = t.admin.delivery;
   const [form, setForm] = useState<ZoneForm>(EMPTY_ZONE_FORM);
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState('');
@@ -45,7 +48,7 @@ function ZoneModal({ isOpen, onClose, onSave, editing }: ZoneModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) { setNameError('Name is required'); return; }
+    if (!form.name.trim()) { setNameError('Required'); return; }
     setSaving(true);
     const payload = {
       name: form.name.trim(),
@@ -56,8 +59,8 @@ function ZoneModal({ isOpen, onClose, onSave, editing }: ZoneModalProps) {
       ? await supabase.from('delivery_zones').update(payload).eq('id', editing.id)
       : await supabase.from('delivery_zones').insert(payload);
     setSaving(false);
-    if (error) { toastError('Save failed', error.message); return; }
-    success(editing ? 'Zone updated' : 'Zone created');
+    if (error) { toastError('Error', error.message); return; }
+    success(editing ? tdel.saveChanges : tdel.createZone);
     onSave();
     onClose();
   };
@@ -71,54 +74,54 @@ function ZoneModal({ isOpen, onClose, onSave, editing }: ZoneModalProps) {
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={editing ? 'Edit Zone' : 'Add Zone'}
+        aria-label={editing ? tdel.editZone : tdel.addZone}
       >
         <div className="modal-header">
-          <h2 className="modal-title">{editing ? 'Edit Zone' : 'Add Delivery Zone'}</h2>
+          <h2 className="modal-title">{editing ? tdel.editZone : tdel.addZone}</h2>
           <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Close">×</button>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <div className="form-group">
-              <label className="form-label" htmlFor="zone-name">Zone Name <span className="form-required">*</span></label>
+              <label className="form-label" htmlFor="zone-name">{tdel.colZoneName} <span className="form-required">*</span></label>
               <input
                 id="zone-name"
                 type="text"
                 className={`input${nameError ? ' input-error' : ''}`}
                 value={form.name}
                 onChange={e => { setForm(p => ({ ...p, name: e.target.value })); setNameError(''); }}
-                placeholder="e.g. Europe, North America"
+                placeholder="e.g. East Africa, Europe"
               />
               {nameError && <p className="form-error">{nameError}</p>}
             </div>
             <div className="form-group">
-              <label className="form-label" htmlFor="zone-countries">Countries <span className="form-label-optional">(comma-separated ISO codes)</span></label>
+              <label className="form-label" htmlFor="zone-countries">{tdel.countriesLabel} <span className="form-label-optional">({tdel.countriesHint})</span></label>
               <input
                 id="zone-countries"
                 type="text"
                 className="input"
                 value={form.countries}
                 onChange={e => setForm(p => ({ ...p, countries: e.target.value }))}
-                placeholder="US, CA, GB"
+                placeholder="RW, KE, UG"
               />
-              <p className="form-hint">Leave empty to match all countries.</p>
+              <p className="form-hint">{tdel.countriesLeaveEmpty}</p>
             </div>
             <div className="form-group">
-              <label className="form-label" htmlFor="zone-regions">Regions <span className="form-label-optional">(comma-separated)</span></label>
+              <label className="form-label" htmlFor="zone-regions">{tdel.regionsLabel} <span className="form-label-optional">({tdel.regionsHint})</span></label>
               <input
                 id="zone-regions"
                 type="text"
                 className="input"
                 value={form.regions}
                 onChange={e => setForm(p => ({ ...p, regions: e.target.value }))}
-                placeholder="California, Texas"
+                placeholder="Kigali, Nairobi"
               />
             </div>
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn btn-ghost" onClick={onClose}>{tdel.cancel}</button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving…' : editing ? 'Save Changes' : 'Create Zone'}
+              {saving ? tdel.saving : editing ? tdel.saveChanges : tdel.createZone}
             </button>
           </div>
         </form>
@@ -168,6 +171,8 @@ interface MethodModalProps {
 
 function MethodModal({ isOpen, onClose, onSave, editing, zones }: MethodModalProps) {
   const { success, error: toastError } = useToast();
+  const { t } = useT();
+  const tdel = t.admin.delivery;
   const [form, setForm] = useState<MethodForm>(EMPTY_METHOD_FORM);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof MethodForm, string>>>({});
@@ -209,8 +214,8 @@ function MethodModal({ isOpen, onClose, onSave, editing, zones }: MethodModalPro
       ? await supabase.from('delivery_methods').update(payload).eq('id', editing.id)
       : await supabase.from('delivery_methods').insert(payload);
     setSaving(false);
-    if (error) { toastError('Save failed', error.message); return; }
-    success(editing ? 'Method updated' : 'Method created');
+    if (error) { toastError('Error', error.message); return; }
+    success(editing ? tdel.saveChanges : tdel.createMethod);
     onSave();
     onClose();
   };
@@ -224,17 +229,17 @@ function MethodModal({ isOpen, onClose, onSave, editing, zones }: MethodModalPro
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={editing ? 'Edit Method' : 'Add Method'}
+        aria-label={editing ? tdel.editMethod : tdel.addMethod}
       >
         <div className="modal-header">
-          <h2 className="modal-title">{editing ? 'Edit Delivery Method' : 'Add Delivery Method'}</h2>
+          <h2 className="modal-title">{editing ? tdel.editMethod : tdel.addMethod}</h2>
           <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Close">×</button>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             {/* Name */}
             <div className="form-group">
-              <label className="form-label" htmlFor="method-name">Name <span className="form-required">*</span></label>
+              <label className="form-label" htmlFor="method-name">{tdel.colMethodName} <span className="form-required">*</span></label>
               <input
                 id="method-name"
                 type="text"
@@ -248,27 +253,27 @@ function MethodModal({ isOpen, onClose, onSave, editing, zones }: MethodModalPro
 
             {/* Description */}
             <div className="form-group">
-              <label className="form-label" htmlFor="method-desc">Description <span className="form-label-optional">(optional)</span></label>
+              <label className="form-label" htmlFor="method-desc">{tdel.descriptionLabel} <span className="form-label-optional">({tdel.optional})</span></label>
               <input
                 id="method-desc"
                 type="text"
                 className="input"
                 value={form.description}
                 onChange={e => set('description', e.target.value)}
-                placeholder="Delivered in a plain box"
+                placeholder=""
               />
             </div>
 
             {/* Zone */}
             <div className="form-group">
-              <label className="form-label" htmlFor="method-zone">Delivery Zone <span className="form-label-optional">(optional)</span></label>
+              <label className="form-label" htmlFor="method-zone">{tdel.colZone} <span className="form-label-optional">({tdel.optional})</span></label>
               <select
                 id="method-zone"
                 className="input"
                 value={form.zone_id}
                 onChange={e => set('zone_id', e.target.value)}
               >
-                <option value="">All zones</option>
+                <option value="">{tdel.allZones}</option>
                 {zones.map(z => (
                   <option key={z.id} value={z.id}>{z.name}</option>
                 ))}
@@ -279,7 +284,7 @@ function MethodModal({ isOpen, onClose, onSave, editing, zones }: MethodModalPro
             <div className="admin-form-row-2col">
               <div className="form-group">
                 <label className="form-label" htmlFor="method-fee">
-                  Base Fee <span className="form-label-optional">($)</span> <span className="form-required">*</span>
+                  {tdel.colBaseFee} <span className="form-required">*</span>
                 </label>
                 <input
                   id="method-fee"
@@ -294,7 +299,7 @@ function MethodModal({ isOpen, onClose, onSave, editing, zones }: MethodModalPro
               </div>
               <div className="form-group">
                 <label className="form-label" htmlFor="method-free-above">
-                  Free Above <span className="form-label-optional">($)</span>
+                  {tdel.colFreeAbove}
                 </label>
                 <input
                   id="method-free-above"
@@ -304,7 +309,7 @@ function MethodModal({ isOpen, onClose, onSave, editing, zones }: MethodModalPro
                   onChange={e => set('free_above_amount', e.target.value)}
                   min="0"
                   step="0.01"
-                  placeholder="Never free"
+                  placeholder={tdel.neverFree}
                 />
               </div>
             </div>
@@ -312,7 +317,7 @@ function MethodModal({ isOpen, onClose, onSave, editing, zones }: MethodModalPro
             {/* Estimated days */}
             <div className="admin-form-row-2col">
               <div className="form-group">
-                <label className="form-label" htmlFor="method-days-min">Min Days</label>
+                <label className="form-label" htmlFor="method-days-min">{tdel.minDays}</label>
                 <input
                   id="method-days-min"
                   type="number"
@@ -325,7 +330,7 @@ function MethodModal({ isOpen, onClose, onSave, editing, zones }: MethodModalPro
                 />
               </div>
               <div className="form-group">
-                <label className="form-label" htmlFor="method-days-max">Max Days</label>
+                <label className="form-label" htmlFor="method-days-max">{tdel.maxDays}</label>
                 <input
                   id="method-days-max"
                   type="number"
@@ -349,17 +354,17 @@ function MethodModal({ isOpen, onClose, onSave, editing, zones }: MethodModalPro
                   onChange={e => set('is_active', e.target.checked)}
                   style={{ width: 16, height: 16, cursor: 'pointer' }}
                 />
-                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)' }}>Active</span>
+                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)' }}>{tdel.active}</span>
               </label>
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)' }}>
-                Inactive methods won't appear at checkout
+                {tdel.inactiveHint}
               </span>
             </div>
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn btn-ghost" onClick={onClose}>{tdel.cancel}</button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving…' : editing ? 'Save Changes' : 'Create Method'}
+              {saving ? tdel.saving : editing ? tdel.saveChanges : tdel.createMethod}
             </button>
           </div>
         </form>
@@ -371,6 +376,8 @@ function MethodModal({ isOpen, onClose, onSave, editing, zones }: MethodModalPro
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function AdminDeliveryPage() {
   const { success, error: toastError } = useToast();
+  const { t } = useT();
+  const tdel = t.admin.delivery;
   const [zones, setZones]     = useState<DeliveryZone[]>([]);
   const [methods, setMethods] = useState<DeliveryMethod[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -398,7 +405,7 @@ export default function AdminDeliveryPage() {
 
   const toggleActive = async (method: DeliveryMethod) => {
     await supabase.from('delivery_methods').update({ is_active: !method.is_active }).eq('id', method.id);
-    success(method.is_active ? 'Method disabled' : 'Method enabled');
+    success(method.is_active ? tdel.disabled : tdel.active);
     load();
   };
 
@@ -406,8 +413,8 @@ export default function AdminDeliveryPage() {
     if (!deleting) return;
     const table = deleting.type === 'zone' ? 'delivery_zones' : 'delivery_methods';
     const { error } = await supabase.from(table).delete().eq('id', deleting.id);
-    if (error) { toastError('Could not delete', error.message); setDeleting(null); return; }
-    success('Deleted successfully');
+    if (error) { toastError('Error', error.message); setDeleting(null); return; }
+    success(tdel.deleteBtn);
     setDeleting(null);
     load();
   };
@@ -422,43 +429,43 @@ export default function AdminDeliveryPage() {
 
   return (
     <>
-      <PageSeo title="Delivery — Admin" />
+      <PageSeo title={`${tdel.title} — ${t.admin.nav.adminBadge}`} />
       <div className="admin-page-header">
         <div>
-          <h1 className="admin-page-title">Delivery</h1>
-          <p className="admin-page-desc">Manage delivery zones and shipping methods.</p>
+          <h1 className="admin-page-title">{tdel.title}</h1>
+          <p className="admin-page-desc">{tdel.subtitle}</p>
         </div>
       </div>
 
       {/* Zones */}
       <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 'var(--space-5)' }}>
         <div style={{ padding: 'var(--space-5)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2 style={{ fontWeight: 'var(--font-bold)' }}>Delivery Zones</h2>
+          <h2 style={{ fontWeight: 'var(--font-bold)' }}>{tdel.zonesTitle}</h2>
           <button id="add-zone-btn" className="btn btn-secondary btn-sm" onClick={openAddZone}>
-            <Plus size={14} /> Add Zone
+            <Plus size={14} /> {tdel.addZone}
           </button>
         </div>
         {zones.length === 0 ? (
           <div style={{ padding: 'var(--space-8)' }}>
-            <EmptyState icon={Globe} title="No zones configured" description="Add a delivery zone to assign shipping methods." />
+            <EmptyState icon={Globe} title={tdel.noZones} description={tdel.noZonesDesc} />
           </div>
         ) : (
           <div className="table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
             <table className="table">
-              <thead><tr><th>Zone Name</th><th>Countries</th><th></th></tr></thead>
+              <thead><tr><th>{tdel.colZoneName}</th><th>{tdel.colCountries}</th><th></th></tr></thead>
               <tbody>
                 {zones.map(zone => (
                   <tr key={zone.id}>
                     <td style={{ fontWeight: 'var(--font-medium)' }}>{zone.name}</td>
                     <td style={{ color: 'var(--color-text-secondary)' }}>
-                      {zone.countries.length > 0 ? zone.countries.join(', ') : 'All'}
+                      {zone.countries.length > 0 ? zone.countries.join(', ') : tdel.allCountries}
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
                         <button
                           className="btn btn-ghost btn-sm btn-icon"
                           onClick={() => openEditZone(zone)}
-                          aria-label={`Edit ${zone.name}`}
+                          aria-label={`${tdel.editZone} ${zone.name}`}
                         >
                           <Pencil size={13} />
                         </button>
@@ -466,7 +473,7 @@ export default function AdminDeliveryPage() {
                           className="btn btn-ghost btn-sm btn-icon"
                           style={{ color: 'var(--red-500)' }}
                           onClick={() => setDeleting({ type: 'zone', id: zone.id, name: zone.name })}
-                          aria-label={`Delete ${zone.name}`}
+                          aria-label={`${tdel.deleteBtn} ${zone.name}`}
                         >
                           <Trash2 size={13} />
                         </button>
@@ -483,26 +490,26 @@ export default function AdminDeliveryPage() {
       {/* Methods */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: 'var(--space-5)', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2 style={{ fontWeight: 'var(--font-bold)' }}>Delivery Methods</h2>
+          <h2 style={{ fontWeight: 'var(--font-bold)' }}>{tdel.methodsTitle}</h2>
           <button id="add-method-btn" className="btn btn-secondary btn-sm" onClick={openAddMethod}>
-            <Plus size={14} /> Add Method
+            <Plus size={14} /> {tdel.addMethod}
           </button>
         </div>
         {methods.length === 0 ? (
           <div style={{ padding: 'var(--space-8)' }}>
-            <EmptyState icon={Truck} title="No delivery methods" description="Add a method to enable checkout delivery options." />
+            <EmptyState icon={Truck} title={tdel.noMethods} description={tdel.noMethodsDesc} />
           </div>
         ) : (
           <div className="table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
             <table className="table">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Zone</th>
-                  <th>Base Fee</th>
-                  <th>Free Above</th>
-                  <th>Est. Days</th>
-                  <th>Status</th>
+                  <th>{tdel.colMethodName}</th>
+                  <th>{tdel.colZone}</th>
+                  <th>{tdel.colBaseFee}</th>
+                  <th>{tdel.colFreeAbove}</th>
+                  <th>{tdel.colEstDays}</th>
+                  <th>{tdel.colStatus}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -522,7 +529,7 @@ export default function AdminDeliveryPage() {
                       <td>{m.free_above_amount ? formatCurrency(m.free_above_amount, 'RWF') : '—'}</td>
                       <td style={{ color: 'var(--color-text-secondary)' }}>
                         {m.estimated_days_min && m.estimated_days_max
-                          ? `${m.estimated_days_min}–${m.estimated_days_max} days`
+                          ? `${m.estimated_days_min}–${m.estimated_days_max} ${tdel.days}`
                           : '—'}
                       </td>
                       <td>
@@ -531,7 +538,7 @@ export default function AdminDeliveryPage() {
                           style={{ cursor: 'pointer', border: 'none' }}
                           onClick={() => toggleActive(m)}
                         >
-                          {m.is_active ? 'Active' : 'Disabled'}
+                          {m.is_active ? tdel.active : tdel.disabled}
                         </button>
                       </td>
                       <td>
@@ -539,7 +546,7 @@ export default function AdminDeliveryPage() {
                           <button
                             className="btn btn-ghost btn-sm btn-icon"
                             onClick={() => openEditMethod(m)}
-                            aria-label={`Edit ${m.name}`}
+                            aria-label={`${tdel.editMethod} ${m.name}`}
                           >
                             <Pencil size={13} />
                           </button>
@@ -547,7 +554,7 @@ export default function AdminDeliveryPage() {
                             className="btn btn-ghost btn-sm btn-icon"
                             style={{ color: 'var(--red-500)' }}
                             onClick={() => setDeleting({ type: 'method', id: m.id, name: m.name })}
-                            aria-label={`Delete ${m.name}`}
+                            aria-label={`${tdel.deleteBtn} ${m.name}`}
                           >
                             <Trash2 size={13} />
                           </button>
@@ -580,9 +587,9 @@ export default function AdminDeliveryPage() {
         isOpen={!!deleting}
         onClose={() => setDeleting(null)}
         onConfirm={handleDelete}
-        title={`Delete ${deleting?.type === 'zone' ? 'Zone' : 'Method'}`}
-        message={`Are you sure you want to delete "${deleting?.name}"? This cannot be undone.`}
-        confirmLabel="Delete"
+        title={deleting?.type === 'zone' ? tdel.deleteZoneTitle : tdel.deleteMethodTitle}
+        message={tdel.deleteConfirm.replace('{name}', deleting?.name ?? '')}
+        confirmLabel={tdel.deleteBtn}
       />
     </>
   );

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingBag, Users, DollarSign, ArrowRight, Package } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
 import { Spinner } from '@/components/shared/Spinner';
 import { formatCurrency, formatDateShort, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from '@/utils/formatters';
@@ -10,6 +11,8 @@ import type { Order } from '@/types';
 interface Stats { revenue: number; orders: number; customers: number; products: number; }
 
 export default function AdminDashboardPage() {
+  const { t } = useT();
+  const td = t.admin.dashboard;
   const [stats, setStats]       = useState<Stats>({ revenue: 0, orders: 0, customers: 0, products: 0 });
   const [recentOrders, setRecent] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,21 +37,21 @@ export default function AdminDashboardPage() {
   }, []);
 
   const KPIS = [
-    { icon: DollarSign, label: 'Total Revenue',  value: formatCurrency(stats.revenue), change: '+12.5%', positive: true },
-    { icon: ShoppingBag, label: 'Total Orders',  value: stats.orders.toLocaleString(), change: '+8.2%', positive: true },
-    { icon: Users,       label: 'Customers',     value: stats.customers.toLocaleString(), change: '+5.1%', positive: true },
-    { icon: Package,     label: 'Active Products', value: stats.products.toLocaleString(), change: '+3', positive: true },
+    { icon: DollarSign, label: td.totalRevenue,  value: formatCurrency(stats.revenue), change: '+12.5%', positive: true },
+    { icon: ShoppingBag, label: td.totalOrders,  value: stats.orders.toLocaleString(), change: '+8.2%', positive: true },
+    { icon: Users,       label: td.customers,     value: stats.customers.toLocaleString(), change: '+5.1%', positive: true },
+    { icon: Package,     label: td.activeProducts, value: stats.products.toLocaleString(), change: '+3', positive: true },
   ];
 
   if (isLoading) return <Spinner fullPage />;
 
   return (
     <>
-      <PageSeo title="Admin Dashboard" />
+      <PageSeo title={`${td.title} — ${t.admin.nav.adminBadge}`} />
       <div className="admin-page-header">
         <div>
-          <h1 className="admin-page-title">Dashboard</h1>
-          <p className="admin-page-desc">Welcome back — here's what's happening today.</p>
+          <h1 className="admin-page-title">{td.title}</h1>
+          <p className="admin-page-desc">{td.subtitle}</p>
         </div>
       </div>
 
@@ -64,7 +67,7 @@ export default function AdminDashboardPage() {
             </div>
             <p className="kpi-value">{value}</p>
             <p className={`kpi-change ${positive ? 'positive' : 'negative'}`}>
-              {change} vs last month
+              {change} {td.vsLastMonth}
             </p>
           </div>
         ))}
@@ -73,13 +76,13 @@ export default function AdminDashboardPage() {
       {/* Recent Orders */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: 'var(--space-5) var(--space-5) 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2 style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-bold)' }}>Recent Orders</h2>
-          <Link to="/admin/orders" className="btn btn-ghost btn-sm">View all <ArrowRight size={14} /></Link>
+          <h2 style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-bold)' }}>{td.recentOrders}</h2>
+          <Link to="/admin/orders" className="btn btn-ghost btn-sm">{td.viewAll} <ArrowRight size={14} /></Link>
         </div>
         <div className="table-wrapper" style={{ border: 'none', borderRadius: 0, marginTop: 'var(--space-4)' }}>
           <table className="table">
             <thead>
-              <tr><th>Order #</th><th>Date</th><th>Status</th><th>Total</th><th></th></tr>
+              <tr><th>{td.colOrder}</th><th>{td.colDate}</th><th>{td.colStatus}</th><th>{td.colTotal}</th><th></th></tr>
             </thead>
             <tbody>
               {recentOrders.map(order => (
@@ -88,7 +91,7 @@ export default function AdminDashboardPage() {
                   <td>{formatDateShort(order.created_at)}</td>
                   <td><span className={`badge ${ORDER_STATUS_COLORS[order.status]}`}>{ORDER_STATUS_LABELS[order.status]}</span></td>
                   <td style={{ fontWeight: 'var(--font-semibold)' }}>{formatCurrency(order.total, order.currency)}</td>
-                  <td><Link to={`/admin/orders/${order.id}`} className="btn btn-ghost btn-sm">View</Link></td>
+                  <td><Link to={`/admin/orders/${order.id}`} className="btn btn-ghost btn-sm">{td.view}</Link></td>
                 </tr>
               ))}
             </tbody>

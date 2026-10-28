@@ -1,822 +1,933 @@
 import { supabase } from '@/lib/supabase';
-import type { ProductSummary, OrderSummary, ChatMessage } from '@/types/chat';
+import type { ChatMessage, ProductSummary, OrderSummary } from '@/types/chat';
+import type { LangCode } from '@/i18n/types';
 
-// Curated products currently available in the Ituze store catalog
-export const FALLBACK_POPULAR_PRODUCTS: ProductSummary[] = [
-  {
-    id: 'p0000000-0000-0000-0000-000000000001',
-    name: 'NovaSound Pro Wireless Headphones',
-    slug: 'novasound-pro-wireless-headphones',
-    base_price: 299.99,
-    sale_price: 249.99,
-    currency: 'USD',
-    image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80',
-    category: 'Audio & Sound',
-    average_rating: 4.9,
-    short_description: 'Active noise cancelling headphones with 40h battery life and spatial audio.',
-  },
-  {
-    id: 'p0000000-0000-0000-0000-000000000002',
-    name: 'Apex Chrono Smartwatch Ultra',
-    slug: 'apex-chrono-smartwatch-ultra',
-    base_price: 399.00,
-    sale_price: 349.00,
-    currency: 'USD',
-    image_url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
-    category: 'Wearables',
-    average_rating: 4.8,
-    short_description: 'Titanium bezel smartwatch with biometric tracking and always-on OLED display.',
-  },
-  {
-    id: 'p0000000-0000-0000-0000-000000000003',
-    name: 'Aura Magnetic Wireless Power Bank',
-    slug: 'aura-magnetic-wireless-power-bank',
-    base_price: 79.99,
-    sale_price: null,
-    currency: 'USD',
-    image_url: 'https://images.unsplash.com/photo-1609592807908-62a2fa84b80b?w=800&q=80',
-    category: 'Accessories',
-    average_rating: 4.7,
-    short_description: '10,000mAh snap-on magnetic fast charger with aluminum casing.',
-  },
-  {
-    id: 'p0000000-0000-0000-0000-000000000004',
-    name: 'Lumina Flow Ambient Light Bar',
-    slug: 'lumina-flow-ambient-light-bar',
-    base_price: 119.00,
-    sale_price: 99.00,
-    currency: 'USD',
-    image_url: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=800&q=80',
-    category: 'Smart Home',
-    average_rating: 4.8,
-    short_description: 'Smart RGBIC dynamic monitor and room light bar with audio sync.',
-  },
-  {
-    id: 'p0000000-0000-0000-0000-000000000005',
-    name: 'Aura Pods True Wireless Earbuds',
-    slug: 'aura-pods-true-wireless-earbuds',
-    base_price: 149.99,
-    sale_price: 129.99,
-    currency: 'USD',
-    image_url: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&q=80',
-    category: 'Audio & Sound',
-    average_rating: 4.8,
-    short_description: 'Compact IPX7 waterproof wireless earbuds with wireless charging case.',
-  },
-  {
-    id: 'p0000000-0000-0000-0000-000000000006',
-    name: 'Apex MagCharge 3-in-1 Station',
-    slug: 'apex-magcharge-3-in-1-charging-station',
-    base_price: 89.99,
-    sale_price: null,
-    currency: 'USD',
-    image_url: 'https://images.unsplash.com/photo-1586816879360-004f5b0c51e3?w=800&q=80',
-    category: 'Accessories',
-    average_rating: 4.6,
-    short_description: 'Simultaneous fast wireless charging for your phone, smartwatch, and earbuds.',
-  },
-];
+export type ChatProductCard = ProductSummary;
+export type ChatOrderCard = OrderSummary & { payment_status?: string };
 
-let cachedProducts: ProductSummary[] | null = null;
-let lastProductFetch = 0;
+interface StoreContextData {
+  products: ChatProductCard[];
+  categories: string[];
+  orders: ChatOrderCard[];
+}
 
-export async function fetchPopularProducts(): Promise<ProductSummary[]> {
-  const now = Date.now();
-  if (cachedProducts && now - lastProductFetch < 60000) {
-    return cachedProducts;
-  }
-
+/**
+ * Fetch live catalog products, categories, and user orders from Supabase (or hybrid store)
+ * so the chatbot can ground its responses in real store data when needed.
+ */
+export async function fetchChatbotContext(userId?: string | null): Promise<StoreContextData> {
   try {
-    const { data, error } = await supabase
-      .from('products')
-      .select(`
-        id, name, slug, base_price, sale_price, currency, short_description,
-        images:product_images(url, is_primary),
-        category:categories(name)
-      `)
-      .eq('is_active', true)
-      .eq('is_archived', false)
-      .limit(8);
+    const [productsRes, categoriesRes, ordersRes] = await Promise.all([
+      supabase
+        .from('products')
+        .select('id, name, slug, base_price, sale_price, currency, average_rating, category:categories(name), images:product_images(url, is_primary)')
+        .eq('status', 'active')
+        .limit(30),
+      supabase
+        .from('categories')
+        .select('name')
+        .eq('is_active', true),
+      userId
+        ? supabase
+            .from('orders')
+            .select('id, order_number, status, payment_status, total, currency, created_at, items:order_items(product_name, quantity)')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(8)
+        : Promise.resolve({ data: [] }),
+    ]);
 
-    if (error || !data || data.length === 0) {
-      cachedProducts = FALLBACK_POPULAR_PRODUCTS;
-      lastProductFetch = now;
-      return FALLBACK_POPULAR_PRODUCTS;
-    }
-
-    cachedProducts = data.map((p: any) => {
-      const primaryImage =
-        p.images?.find((img: any) => img.is_primary)?.url ||
-        p.images?.[0]?.url ||
-        'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80';
+    const products: ChatProductCard[] = (productsRes.data ?? []).map((p: Record<string, unknown>) => {
+      const images = (p.images as Array<{ url: string; is_primary: boolean }>) ?? [];
+      const primaryImg = images.find((i) => i.is_primary)?.url ?? images[0]?.url ?? 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400';
+      const cat = p.category as { name?: string } | null;
 
       return {
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
+        id: String(p.id),
+        name: String(p.name),
+        slug: String(p.slug),
         base_price: Number(p.base_price),
         sale_price: p.sale_price ? Number(p.sale_price) : null,
-        currency: p.currency || 'USD',
-        image_url: primaryImage,
-        category: p.category?.name || 'Electronics',
-        short_description: p.short_description || undefined,
+        currency: String(p.currency || 'RWF'),
+        image_url: primaryImg,
+        category: cat?.name,
+        average_rating: p.average_rating ? Number(p.average_rating) : undefined,
       };
     });
-    lastProductFetch = now;
-    return cachedProducts || FALLBACK_POPULAR_PRODUCTS;
-  } catch {
-    cachedProducts = FALLBACK_POPULAR_PRODUCTS;
-    lastProductFetch = now;
-    return FALLBACK_POPULAR_PRODUCTS;
+
+    const categories: string[] = (categoriesRes.data ?? []).map((c: Record<string, unknown>) => String(c.name));
+
+    const orders: ChatOrderCard[] = (ordersRes.data ?? []).map((o: Record<string, unknown>) => {
+      const items = (o.items as Array<{ product_name: string; quantity: number }>) ?? [];
+      return {
+        id: String(o.id),
+        order_number: String(o.order_number),
+        status: String(o.status),
+        payment_status: String(o.payment_status || 'paid'),
+        total: Number(o.total),
+        currency: String(o.currency || 'RWF'),
+        created_at: String(o.created_at),
+        items_summary: items.map((i) => `${i.product_name} (x${i.quantity})`),
+      };
+    });
+
+    return { products, categories, orders };
+  } catch (err) {
+    console.warn('[Chatbot] Failed to fetch live context:', err);
+    return { products: [], categories: [], orders: [] };
   }
 }
 
-export async function fetchUserOrders(userId?: string): Promise<OrderSummary[]> {
-  if (!userId) return [];
-
+/**
+ * Look up a specific order by order_number (e.g. ORD-2026-8912)
+ */
+async function lookupOrderByNumber(orderNum: string): Promise<ChatOrderCard | null> {
   try {
-    const { data, error } = await supabase
+    const cleanNum = orderNum.trim().toUpperCase();
+    const { data } = await supabase
       .from('orders')
-      .select(`
-        id, order_number, status, total, currency, created_at,
-        items:order_items(product_name, quantity)
-      `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    if (error || !data) return [];
-
-    return data.map((o: any) => ({
-      id: o.id,
-      order_number: o.order_number,
-      status: o.status,
-      total: Number(o.total),
-      currency: o.currency || 'USD',
-      created_at: o.created_at,
-      item_count: o.items?.length || 0,
-      items_summary: o.items?.map((i: any) => `${i.product_name} (x${i.quantity})`) || [],
-    }));
-  } catch {
-    return [];
-  }
-}
-
-export async function findOrderByNumber(orderNum: string): Promise<OrderSummary | null> {
-  try {
-    const cleanNum = orderNum.trim().toUpperCase().replace(/^#/, '');
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        id, order_number, status, total, currency, created_at,
-        items:order_items(product_name, quantity)
-      `)
+      .select('id, order_number, status, payment_status, total, currency, created_at, items:order_items(product_name, quantity)')
       .ilike('order_number', `%${cleanNum}%`)
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
 
-    if (error || !data) return null;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return null;
 
+    const items = (row.items as Array<{ product_name: string; quantity: number }>) ?? [];
     return {
-      id: data.id,
-      order_number: data.order_number,
-      status: data.status,
-      total: Number(data.total),
-      currency: data.currency || 'USD',
-      created_at: data.created_at,
-      item_count: data.items?.length || 0,
-      items_summary: data.items?.map((i: any) => `${i.product_name} (x${i.quantity})`) || [],
+      id: String(row.id),
+      order_number: String(row.order_number),
+      status: String(row.status),
+      payment_status: String(row.payment_status || 'paid'),
+      total: Number(row.total),
+      currency: String(row.currency || 'RWF'),
+      created_at: String(row.created_at),
+      items_summary: items.map((i) => `${i.product_name} (x${i.quantity})`),
     };
   } catch {
     return null;
   }
 }
 
-export interface AssistantResponse {
-  content: string;
-  matchedProducts?: ProductSummary[];
-  matchedOrders?: OrderSummary[];
+/**
+ * Detect effective language from the user's actual message text if they write in
+ * French, Kinyarwanda, Swahili, or English; otherwise fall back to the active UI language.
+ */
+function detectMessageLanguage(userMessage: string, defaultLang: LangCode): LangCode {
+  const q = userMessage.toLowerCase().trim();
+
+  // Kinyarwanda markers
+  if (/\b(muraho|mwiriwe|mwaramutse|amakuru|witwa|nde|ninde|kuki|ryari|he|iki|ibicuruzwa|komande|gutumiza|kwishyura|urakoze|murakoze|yego|oya|mbwira|sobanura| ni iki|wakoze)\b/i.test(q)) {
+    return 'rw';
+  }
+  // Swahili markers
+  if (/\b(habari|mambo|shikamoo|hujambo|jina lako|nani|kwa nini|lini|wapi|nini|bidhaa|agizo|usafirishaji|malipo|asante|ndiyo|hapana|niambie|eleza|aliyeunda|aliyetengeneza)\b/i.test(q)) {
+    return 'sw';
+  }
+  // French markers
+  if (/\b(bonjour|salut|bonsoir|comment|qui a créé|qui a inventé|quel est|quelle est|pourquoi|quand|où|merci|commande|livraison|produits|prix|retour|paiement|explique|raconte)\b/i.test(q)) {
+    return 'fr';
+  }
+  // English markers
+  if (/\b(who|what|when|where|why|how|tell me|explain|created|invented|your name|are you|hello|hey|hi|good morning|good evening)\b/i.test(q)) {
+    return 'en';
+  }
+
+  return defaultLang;
 }
 
 /**
- * Strictly checks whether the user is explicitly asking to see, buy, or get recommendations for products.
- * Simple greetings ("hey", "hello") or general questions will return false so products are NOT shown.
+ * Determine user intent so we NEVER show products unless the user explicitly asks for products.
  */
-export function isExplicitProductInquiry(query: string): boolean {
-  const q = query.trim().toLowerCase();
-  if (!q) return false;
+export type UserIntent =
+  | 'greeting'
+  | 'identity'
+  | 'thanks'
+  | 'order'
+  | 'shipping'
+  | 'returns'
+  | 'payment'
+  | 'discount'
+  | 'contact'
+  | 'product'
+  | 'general';
 
-  // Never show products on pure greetings or small talk
+export function detectUserIntent(userMessage: string): UserIntent {
+  const q = userMessage.toLowerCase().trim();
+
+  // 1. Identity / Name questions ("what is your name", "who are you", "witwa nde", "jina lako nani", "comment tu t'appelles")
   if (
-    /^(hey+|hi+|hello+|hola|yo|sup|good\s*(morning|afternoon|evening|day)|bonjour|salut|muraho|mwiriwe|mwaramutse|habari|hujambo|mambo|sasa|how\s+are\s+you|how's\s+it\s+going|thanks?|thank\s+you|merci|murakoze|asante|ok|okay|cool|great|nice)[!.?\s]*$/i.test(
+    /\b(what is your name|what's your name|whats your name|who are you|your name|tell me your name|are you an ai|are you a bot|who made you|who created you)\b/i.test(q) ||
+    /\b(comment tu t'appelles|comment vous appelez|quel est ton nom|quel est votre nom|qui es-tu|qui êtes-vous|ton nom)\b/i.test(q) ||
+    /\b(witwa nde|uri nde|izina ryawe|witwa gute)\b/i.test(q) ||
+    /\b(jina lako nani|wewe ni nani|unaitwa nani|jina lako)\b/i.test(q)
+  ) {
+    return 'identity';
+  }
+
+  // 2. Pure greeting or casual check-in
+  if (
+    /^(hi+|hey+|hello+|hola|yo|sup|good\s*(morning|afternoon|evening|day)|greetings|bonjour|salut|bonsoir|coucou|muraho|mwiriwe|mwaramutse|amakuru|bite|habari|mambo|sasa|hujambo|shikamoo)([!.,?\s]*|(there|ituze|ai|assistant|friend|bro|boss|how are you|comment ça va|amakuru yawe|habari yako)*)*$/i.test(
+      q
+    ) ||
+    /^(how are you|how's it going|how are things|are you there|comment vas-tu|comment allez-vous|amakuru yawe|umeamkaje|habari za leo)[?!.\s]*$/i.test(
       q
     )
   ) {
-    return false;
+    return 'greeting';
   }
 
-  return (
-    q.includes('product') ||
-    q.includes('popular') ||
+  // 3. Thanks / Goodbye
+  if (
+    /^(thanks|thank you|thx|ty|merci|merci beaucoup|urakoze|murakoze|asante|asante sana|shukrani|bye|goodbye|see you|au revoir|murabeho|kwaheri)[!.,?\s]*$/i.test(
+      q
+    )
+  ) {
+    return 'thanks';
+  }
+
+  // 4. Order tracking
+  if (
+    q.includes('ord-') ||
+    /\b(track|my order|orders|order status|where is my|package|parcel|commande|suivre|suivi|komande|gutumiza|agizo|maagizo|fuatilia)\b/i.test(
+      q
+    )
+  ) {
+    return 'order';
+  }
+
+  // 5. Shipping / Delivery
+  if (
+    /\b(ship|shipping|deliver|delivery|livraison|livrer|kugeza|ihererekanywa|usafirishaji|kusafirisha|how long to arrive|kigali delivery)\b/i.test(
+      q
+    )
+  ) {
+    return 'shipping';
+  }
+
+  // 6. Returns / Refunds
+  if (
+    /\b(return|refund|exchange|retour|remboursement|gusubiza|kurudisha|marejesho|money back|broken)\b/i.test(
+      q
+    )
+  ) {
+    return 'returns';
+  }
+
+  // 7. Payment
+  if (
+    /\b(pay|payment|momo|mobile money|mtn|airtel|visa|mastercard|cash on delivery|paiement|kwishyura|malipo|kulipa)\b/i.test(
+      q
+    )
+  ) {
+    return 'payment';
+  }
+
+  // 8. Discounts / Coupons
+  if (
+    /\b(discount|coupon|promo|voucher|code|sale|deal|remise|réduction|igabanyirizwa|punguzo|welcome10|save20|freeship)\b/i.test(
+      q
+    )
+  ) {
+    return 'discount';
+  }
+
+  // 9. Contact / Human Support
+  if (
+    /\b(contact|support|phone|email|call|whatsapp|location|address|human|agent|customer service|contacter|ubufasha|wasiliana|msaada)\b/i.test(
+      q
+    )
+  ) {
+    return 'contact';
+  }
+
+  // 10. Explicit Product / Store Catalog Search
+  // Make sure real-life questions like "who created iphone", "when was iphone invented", "what is an iphone" are treated as 'general' knowledge, NOT store product cards, unless the user asks to buy/shop/price!
+  const isRealLifeFactQuestion =
+    /\b(who|when|where|why|how did|how does|history of|inventor of|creator of|founder of|created|invented|founded|discovered|meaning of|definition of|capital of|president of|population of|qui a|quand|pourquoi|comment fonctionne|ninde|ryari|kuki|nani ali|lini|kwa nini)\b/i.test(
+      q
+    ) && !/\b(buy|shop|price|cost|in stock|sell|order|recommend|store|catalog|cheapest)\b/i.test(q);
+
+  if (!isRealLifeFactQuestion) {
+    const productKeywords =
+      /\b(product|products|item|items|buy|shop|shopping|recommend|recommendation|suggest|looking for|search|find|show me|catalog|store|stock|available|price|cost|how much|cheap|best|top|rating|watch|watches|headphone|headphones|earbuds|audio|speaker|shirt|t-shirt|jacket|dress|shoes|sneakers|bag|backpack|laptop|phone|electronics|fashion|clothing|accessories|home|kitchen|fitness|beauty|gift|gifts|produit|produits|acheter|montre|écouteurs|vêtements|chaussures|sac|ibicuruzwa|kugura|isaha|imyenda|inkweto|igikapu|bidhaa|nunua|saa|nguo|viatu|mfuko)\b/i;
+
+    if (productKeywords.test(q)) {
+      return 'product';
+    }
+  }
+
+  return 'general';
+}
+
+/**
+ * Match relevant products from store catalog ONLY when intent === 'product'
+ */
+function findMatchingProducts(query: string, products: ChatProductCard[]): ChatProductCard[] {
+  const q = query.toLowerCase();
+
+  const stopWords = new Set([
+    'the', 'and', 'for', 'with', 'what', 'how', 'can', 'you', 'show', 'me',
+    'have', 'any', 'are', 'there', 'some', 'good', 'best', 'looking', 'want',
+    'buy', 'need', 'recommend', 'products', 'product', 'items', 'item', 'shop',
+    'please', 'tell', 'about', 'ituze', 'price', 'cost', 'much',
+  ]);
+
+  const keywords = q
+    .replace(/[^\w\s]/g, '')
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !stopWords.has(w));
+
+  if (keywords.length > 0) {
+    const scored = products
+      .map((p) => {
+        let score = 0;
+        const nameLower = p.name.toLowerCase();
+        const catLower = (p.category || '').toLowerCase();
+
+        for (const kw of keywords) {
+          if (nameLower.includes(kw)) score += 3;
+          if (catLower.includes(kw)) score += 2;
+        }
+        return { product: p, score };
+      })
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    if (scored.length > 0) {
+      return scored.slice(0, 3).map((s) => s.product);
+    }
+  }
+
+  if (
     q.includes('recommend') ||
-    q.includes('show me') ||
-    q.includes('what do you sell') ||
-    q.includes('what do you have') ||
-    q.includes('catalog') ||
-    q.includes('looking for') ||
-    q.includes('want to buy') ||
-    q.includes('buy ') ||
-    q.includes('price of') ||
-    q.includes('headphone') ||
-    q.includes('earbud') ||
-    q.includes('smartwatch') ||
-    q.includes('watch') ||
-    q.includes('chrono') ||
-    q.includes('light bar') ||
-    q.includes('power bank') ||
-    q.includes('charger') ||
-    q.includes('speaker') ||
-    q.includes('produit') ||
-    q.includes('populaire') ||
+    q.includes('best') ||
+    q.includes('popular') ||
+    q.includes('top') ||
+    q.includes('featured') ||
+    q.includes('show') ||
+    q.includes('product') ||
+    q.includes('produits') ||
     q.includes('ibicuruzwa') ||
-    q.includes('ibikunzwe') ||
-    q.includes('bidhaa') ||
-    q.includes('maarufu')
-  );
+    q.includes('bidhaa')
+  ) {
+    return [...products]
+      .sort((a, b) => (b.average_rating ?? 0) - (a.average_rating ?? 0))
+      .slice(0, 3);
+  }
+
+  return [];
 }
 
 /**
- * Matching helper that selects relevant products when a user explicitly asks for them.
+ * Clean search topic from a natural language question so we can query Wikipedia / DuckDuckGo APIs
+ * when the backend Gemini API key is not configured.
  */
-function selectMatchingProducts(query: string, replyText: string, products: ProductSummary[]): ProductSummary[] {
-  const combined = (query + ' ' + replyText).toLowerCase();
-  const matched: ProductSummary[] = [];
-
-  const isAudioQuery =
-    combined.includes('audio') ||
-    combined.includes('headphone') ||
-    combined.includes('earbud') ||
-    combined.includes('sound') ||
-    combined.includes('casque') ||
-    combined.includes('ecouteur');
-  const isWatchQuery =
-    combined.includes('watch') ||
-    combined.includes('montre') ||
-    combined.includes('chrono') ||
-    combined.includes('wearable') ||
-    combined.includes('isaha');
-  const isLightQuery =
-    combined.includes('light') ||
-    combined.includes('lumina') ||
-    combined.includes('lamp') ||
-    combined.includes('itara');
-  const isPowerQuery =
-    combined.includes('power bank') ||
-    combined.includes('charger') ||
-    combined.includes('charge') ||
-    combined.includes('battery') ||
-    combined.includes('station');
-
-  if (isAudioQuery) {
-    matched.push(
-      ...products.filter(
-        (p) =>
-          p.category?.toLowerCase().includes('audio') ||
-          p.name.toLowerCase().includes('headphones') ||
-          p.name.toLowerCase().includes('pods')
-      )
-    );
-  }
-  if (isWatchQuery) {
-    matched.push(
-      ...products.filter(
-        (p) => p.category?.toLowerCase().includes('wearable') || p.name.toLowerCase().includes('watch')
-      )
-    );
-  }
-  if (isLightQuery) {
-    matched.push(
-      ...products.filter(
-        (p) => p.category?.toLowerCase().includes('smart home') || p.name.toLowerCase().includes('light')
-      )
-    );
-  }
-  if (isPowerQuery) {
-    matched.push(
-      ...products.filter(
-        (p) =>
-          p.category?.toLowerCase().includes('accessories') ||
-          p.name.toLowerCase().includes('power') ||
-          p.name.toLowerCase().includes('charge')
-      )
-    );
-  }
-
-  for (const p of products) {
-    if (combined.includes(p.name.toLowerCase()) || combined.includes(p.slug.toLowerCase())) {
-      if (!matched.find((item) => item.id === p.id)) {
-        matched.push(p);
-      }
-    }
-  }
-
-  if (matched.length === 0) {
-    return products.slice(0, 3);
-  }
-
-  // Deduplicate and return top 3
-  const unique: ProductSummary[] = [];
-  for (const item of matched) {
-    if (!unique.find((u) => u.id === item.id)) {
-      unique.push(item);
-    }
-  }
-  return unique.slice(0, 3);
+function extractKnowledgeTopic(question: string): string {
+  return question
+    .replace(/[?!.]+$/g, '')
+    .replace(
+      /^(who\s+(created|invented|founded|made|built|discovered|wrote|is|was)|what\s+(is|are|was|were|does)|when\s+(was|did|is)|where\s+(is|are|was)|tell\s+me\s+about|explain\s+what\s+is|explain|define|history\s+of|qui\s+(a\s+créé|a\s+inventé|a\s+fondé|est|était)|qu'est-ce\s+que\s+(le|la|l'|les|un|une)?|c'est\s+quoi|ninde\s+(wakoze|washinze|wavumbuye)|ni\s+iki|sobanura|nani\s+(aliyeunda|aliyetengeneza|aligundua|ni)|nini\s+maana\s+ya|eleza\s+kuhusu)\s+/i,
+      ''
+    )
+    .replace(/^(the|a|an|le|la|les|un|une)\s+/i, '')
+    .trim();
 }
 
 /**
- * Intelligent conversational engine covering casual greetings, order tracking, store policies, and product queries.
+ * Query live open knowledge APIs (Wikipedia REST & Search API + DuckDuckGo Instant Answer API)
+ * so ITUZE AI can answer real-life questions using live web knowledge sources even on static Vercel deployments.
  */
-function generateIntelligentItuzeResponse(
-  query: string,
-  products: ProductSummary[],
-  orders: OrderSummary[],
-  userId?: string,
-  userName?: string,
-  lang = 'en',
-  specificOrder?: OrderSummary | null
-): AssistantResponse {
-  const q = query.trim().toLowerCase();
-  const matchedOrders: OrderSummary[] = [];
-  const nameSuffix = userName ? ` ${userName}` : '';
+async function fetchLiveKnowledgeAnswer(question: string, lang: LangCode): Promise<string | null> {
+  const topic = extractKnowledgeTopic(question);
+  if (!topic || topic.length < 2) return null;
 
-  // 1. PURE GREETINGS & SMALL TALK — Reply with simple, natural words and NO products or heavy lists
-  const isSimpleGreeting =
-    /^(hey+|hi+|hello+|hola|yo|good\s*(morning|afternoon|evening|day)|bonjour|salut|coucou|muraho|mwiriwe|mwaramutse|bite|habari|hujambo|mambo|sasa)[!.?\s]*$/i.test(
-      q
-    );
+  const wikiLangs = lang === 'fr' ? ['fr', 'en'] : lang === 'sw' ? ['sw', 'en'] : lang === 'rw' ? ['rw', 'en'] : ['en'];
 
-  if (isSimpleGreeting) {
-    if (lang === 'fr') {
-      return { content: `Bonjour${nameSuffix} ! Comment puis-je vous aider aujourd'hui ?` };
-    }
-    if (lang === 'rw') {
-      return { content: `Muraho${nameSuffix} ! Nagufasha iki uyu munsi ?` };
-    }
-    if (lang === 'sw') {
-      return { content: `Habari${nameSuffix}! Nawezaje kukusaidia leo?` };
-    }
-    return { content: `Hey${nameSuffix}! Welcome to Ituze. How can I help you today?` };
-  }
+  for (const wLang of wikiLangs) {
+    try {
+      const searchUrl = `https://${wLang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+        topic
+      )}&utf8=&format=json&origin=*&srlimit=1`;
+      const searchRes = await fetch(searchUrl);
+      if (!searchRes.ok) continue;
+      const searchData = await searchRes.json();
+      const firstHit = searchData?.query?.search?.[0];
+      if (!firstHit?.title) continue;
 
-  const isHowAreYou =
-    q.includes('how are you') ||
-    q.includes("how's it going") ||
-    q.includes('how are things') ||
-    q.includes('comment ça va') ||
-    q.includes('comment vas-tu') ||
-    q.includes('amakuru') ||
-    q.includes('umeamkaje') ||
-    q.includes('habari gani');
+      const summaryUrl = `https://${wLang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(firstHit.title)}`;
+      const summaryRes = await fetch(summaryUrl);
+      if (!summaryRes.ok) continue;
+      const summaryData = await summaryRes.json();
 
-  if (isHowAreYou && !isExplicitProductInquiry(q)) {
-    if (lang === 'fr') {
-      return { content: `Je vais très bien, merci ! Comment puis-je vous aider aujourd'hui ?` };
-    }
-    if (lang === 'rw') {
-      return { content: `Meze neza cyane, urakoze kubaza! Nagufasha iki uyu munsi?` };
-    }
-    if (lang === 'sw') {
-      return { content: `Niko salama kabisa, asante kwa kuuliza! Nawezaje kukusaidia leo?` };
-    }
-    return { content: `I'm doing great, thank you for asking! How can I help you today?` };
-  }
+      if (summaryData?.extract && summaryData.extract.length > 40) {
+        const sentences = String(summaryData.extract)
+          .split(/(?<=[.!?])\s+/)
+          .slice(0, 4)
+          .join(' ');
 
-  const isThanksOrAck =
-    /^(thanks?|thank\s+you(\s+so\s+much|\s+very\s+much)?|thx|ty|merci(\s+beaucoup)?|murakoze(\s+cyane)?|urakoze|asante(\s+sana)?|ok|okay|got\s+it|alright|awesome|great|nice|bye|goodbye)[!.?\s]*$/i.test(
-      q
-    );
-
-  if (isThanksOrAck) {
-    if (lang === 'fr') {
-      return { content: `Avec plaisir ! N'hésitez pas si vous avez besoin d'autre chose.` };
-    }
-    if (lang === 'rw') {
-      return { content: `Murakoze cyane! Niba hari ikindi ukeneye, mbwira ngufashe.` };
-    }
-    if (lang === 'sw') {
-      return { content: `Karibu sana! Usisite kuniuliza kama unahitaji msaada mwingine.` };
-    }
-    return { content: `You're very welcome! Let me know if there's anything else I can help you with.` };
-  }
-
-  const isIdentityQuestion =
-    q.includes('who are you') ||
-    q.includes('what are you') ||
-    q.includes('what can you do') ||
-    q.includes('qui es-tu') ||
-    q.includes('uri nde') ||
-    q.includes('wewe ni nani');
-
-  if (isIdentityQuestion) {
-    if (lang === 'fr') {
-      return {
-        content: `Je suis **Ituze AI**, votre assistant personnel sur Ituze. Je peux vous aider à suivre vos commandes, répondre à vos questions sur la livraison ou vous recommander des produits si vous le souhaitez.`,
-      };
-    }
-    if (lang === 'rw') {
-      return {
-        content: `Ndi **Ituze AI**, umufasha wawe kuri Ituze. Nshobora kugufasha gukurikirana komande zawe, gusubiza ibibazo byo kugeza ibicuruzwa, cyangwa kukwereka ibicuruzwa igihe ubisabye.`,
-      };
-    }
-    if (lang === 'sw') {
-      return {
-        content: `Mimi ni **Ituze AI**, msaidizi wako kwenye Ituze. Ninaweza kukusaidia kufuatilia maagizo yako, kujibu maswali ya usafirishaji, au kukuonyesha bidhaa ukiomba.`,
-      };
-    }
-    return {
-      content: `I'm **Ituze AI**, your virtual shopping assistant for Ituze. I can help you track orders, answer questions about shipping and returns, or show you products whenever you ask.`,
-    };
-  }
-
-  // 2. SPECIFIC ORDER LOOKUP (e.g. ORD-2026-8912)
-  if (specificOrder) {
-    matchedOrders.push(specificOrder);
-    let text = '';
-    if (lang === 'fr') {
-      text = `J'ai trouvé votre commande **#${specificOrder.order_number}** (${specificOrder.status.toUpperCase()}) d'un montant de **$${specificOrder.total} ${specificOrder.currency}**. Cliquez sur la carte ci-dessous pour voir le suivi détaillé.`;
-    } else if (lang === 'rw') {
-      text = `Nabonye komande yawe **#${specificOrder.order_number}** (${specificOrder.status.toUpperCase()}) ihwanye na **$${specificOrder.total} ${specificOrder.currency}**. Kanda ku ikarita iri munsi urebe aho igeze.`;
-    } else if (lang === 'sw') {
-      text = `Nimepata agizo lako **#${specificOrder.order_number}** (${specificOrder.status.toUpperCase()}) lenye jumla ya **$${specificOrder.total} ${specificOrder.currency}**. Bofya kadi hapa chini kufuatilia.`;
-    } else {
-      text = `Here is your order **#${specificOrder.order_number}** — currently **${specificOrder.status.toUpperCase()}** ($${specificOrder.total} ${specificOrder.currency}). Click the order card below to view full step-by-step tracking.`;
-    }
-    return { content: text, matchedOrders };
-  }
-
-  // 3. ORDER / TRACKING INTENT
-  const isOrderIntent =
-    q.includes('order') ||
-    q.includes('track') ||
-    q.includes('package') ||
-    q.includes('shipment') ||
-    q.includes('where is my') ||
-    q.includes('commande') ||
-    q.includes('suivi') ||
-    q.includes('colis') ||
-    q.includes('agizo') ||
-    q.includes('maagizo') ||
-    q.includes('fuatilia') ||
-    q.includes('komande') ||
-    q.includes('ibyatumijwe') ||
-    q.includes('status');
-
-  if (isOrderIntent) {
-    if (userId && orders.length > 0) {
-      matchedOrders.push(...orders.slice(0, 3));
-      let text = '';
-      if (lang === 'fr') {
-        text = `Voici vos commandes récentes. Cliquez sur une commande ci-dessous pour suivre son statut en direct ou allez dans votre [Tableau de bord](/account) :`;
-      } else if (lang === 'rw') {
-        text = `Dore komande zawe ziheruka. Kanda kuri komande iri munsi kugira ngo ukurikirane aho igeze cyangwa ujye muri [Konti yawe](/account) :`;
-      } else if (lang === 'sw') {
-        text = `Hapa kuna maagizo yako ya hivi karibuni. Bofya agizo hapa chini kufuatilia au tembelea [Dashibodi yako](/account) :`;
-      } else {
-        text = `Here are your recent orders. Tap any order card below to track its live delivery progress, or visit your [Account Dashboard](/account):`;
+        if (lang === 'fr') {
+          return `**${summaryData.title}**\n\n${sentences}\n\n> 💡 *Vous avez une autre question ? Demandez-moi tout ce que vous voulez — je suis **ITUZE AI** !*`;
+        }
+        if (lang === 'rw') {
+          return `**${summaryData.title}**\n\n${sentences}\n\n> 💡 *Ufite ikindi kibazo? Mbwira icyo ushaka cyose — ndi **ITUZE AI**!*`;
+        }
+        if (lang === 'sw') {
+          return `**${summaryData.title}**\n\n${sentences}\n\n> 💡 *Una swali lingine? Niulize chochote — mimi ni **ITUZE AI**!*`;
+        }
+        return `**${summaryData.title}**\n\n${sentences}\n\n> 💡 *Have another question? Feel free to ask me anything — I am **ITUZE AI**!*`;
       }
-      return { content: text, matchedOrders };
-    } else if (userId) {
-      return {
-        content:
-          lang === 'fr'
-            ? `Vous n'avez pas encore de commande active. Vous pouvez aussi rechercher un numéro de commande (ex: ORD-2026-8912) directement depuis votre [Tableau de bord](/account).`
-            : lang === 'rw'
-            ? `Nta komande urakora. Ushobora no gushakisha numero ya komande (urugero: ORD-2026-8912) muri [Konti yawe](/account).`
-            : lang === 'sw'
-            ? `Bado huna agizo lolote. Unaweza pia kutafuta nambari ya agizo (mfano: ORD-2026-8912) kwenye [Dashibodi yako](/account).`
-            : `You don't have any orders under your account yet. You can also enter an order number (such as **ORD-2026-8912**) right here or in your [Account Dashboard](/account) to track it.`,
-      };
-    } else {
-      return {
-        content:
-          lang === 'fr'
-            ? `Pour suivre vos commandes, veuillez vous [connecter à votre compte](/auth/login) ou m'indiquer votre numéro de commande (ex: **ORD-2026-8912**).`
-            : lang === 'rw'
-            ? `Kugira ngo ukurikirane komande zawe, [injira kuri konti yawe](/auth/login) cyangwa wandike numero ya komande yawe hano (urugero: **ORD-2026-8912**).`
-            : lang === 'sw'
-            ? `Kufuatilia maagizo yako, tafadhali [ingia kwenye akaunti yako](/auth/login) au andika nambari ya agizo lako hapa (mfano: **ORD-2026-8912**).`
-            : `To track your orders, please [sign in to your account](/auth/login) or type your order number here (for example: **ORD-2026-8912**).`,
-      };
+    } catch {
+      // Try next language or fallback
     }
   }
 
-  // 4. EXPLICIT PRODUCT INQUIRY — Only show product cards when the user asks for products
-  if (isExplicitProductInquiry(q)) {
-    const finalProducts = selectMatchingProducts(q, '', products);
-    let text = '';
-    if (lang === 'fr') {
-      text = `Voici les produits correspondants dans notre catalogue Ituze. Cliquez sur un article pour voir les détails :`;
-    } else if (lang === 'rw') {
-      text = `Dore ibicuruzwa bihari muri Ituze bihuye n'ibyo ushaka. Kanda ku gicuruzwa urebe ibirambuye :`;
-    } else if (lang === 'sw') {
-      text = `Hapa kuna bidhaa zinazopatikana kwenye Ituze. Bofya bidhaa yoyote kuona maelezo zaidi :`;
-    } else {
-      text = `Here are the matching products from our Ituze collection. Tap any item below to view full details:`;
+  // Also try DuckDuckGo Instant Answer API
+  try {
+    const ddgRes = await fetch(
+      `https://api.duckduckgo.com/?q=${encodeURIComponent(topic)}&format=json&no_html=1&skip_disambig=1`
+    );
+    if (ddgRes.ok) {
+      const ddgData = await ddgRes.json();
+      if (ddgData?.AbstractText && String(ddgData.AbstractText).length > 30) {
+        return `**${ddgData.Heading || topic}**\n\n${ddgData.AbstractText}`;
+      }
     }
-    return { content: text, matchedProducts: finalProducts };
+  } catch {
+    // Ignore network error
   }
 
-  // 5. SHIPPING & DELIVERY INTENT
-  if (
-    q.includes('ship') ||
-    q.includes('deliver') ||
-    q.includes('livr') ||
-    q.includes('kugeza') ||
-    q.includes('usafirishaji') ||
-    q.includes('how long')
-  ) {
+  return null;
+}
+
+/**
+ * Curated multilingual real-life knowledge & math responder for instant, accurate answers
+ * to common real-life questions (like "Who created the iPhone?", math expressions, date/time, AI, Rwanda, etc.)
+ */
+function answerCuratedRealLifeQuestion(userMessage: string, lang: LangCode): string | null {
+  const q = userMessage.toLowerCase().trim();
+
+  // 1. iPhone / Apple / Steve Jobs
+  if (/\b(iphone|steve jobs|apple)\b/i.test(q) && /\b(who|created|invented|founded|made|built|founder|creator|qui|ninde|nani|when|history)\b/i.test(q)) {
     if (lang === 'fr') {
-      return {
-        content: `La livraison est **gratuite dès $50 USD** d'achat. La livraison standard prend **3 à 5 jours ouvrés** ($4.99) et la livraison express prend **1 à 2 jours ouvrés** ($12.99).`,
-      };
+      return `L'**iPhone** a été créé et développé par **Apple Inc.** sous la direction visionnaire de son cofondateur et PDG **Steve Jobs**, qui a dévoilé le tout premier iPhone le **9 janvier 2007** à San Francisco (commercialisé le 29 juin 2007).\n\n- **Créateur & Visionnaire** : Steve Jobs (cofondateur d'Apple avec Steve Wozniak et Ronald Wayne)\n- **Design industriel** : Sir Jony Ive\n- **Ingénierie matérielle & logicielle** : Tony Fadell, Scott Forstall et l'équipe d'ingénieurs d'Apple.`;
     }
     if (lang === 'rw') {
-      return {
-        content: `Kugeza ibicuruzwa ni **ubuntu ku bicuruzwa birengeje $50 USD**. Uburyo busanzwe bitwara **iminsi 3–5 y'akazi** ($4.99), naho Express bigatwara **iminsi 1–2** ($12.99).`,
-      };
+      return `**iPhone** yakozwe kandi itunganywa n'uruganda rwa **Apple Inc.** iyobowe na **Steve Jobs** (umwe mu bashinze Apple), wayimuritse ku mugaragaro bwa mbere ku wa **9 Mutarama 2007**.\n\n- **Uwayitekereje akanayobora umushinga**: Steve Jobs\n- ** Igishushanyo mbonera (Design)**: Jony Ive\n- **Ikoranabuhanga**: Ikipe y'abahanga ba Apple barimo Tony Fadell na Scott Forstall.`;
     }
     if (lang === 'sw') {
-      return {
-        content: `Usafirishaji ni **bure kwa maagizo zaidi ya $50 USD**. Usafirishaji wa kawaida huchukua **siku 3–5 za kazi** ($4.99) na Express huchukua **siku 1–2** ($12.99).`,
-      };
+      return `**iPhone** iliundwa na kutengenezwa na kampuni ya **Apple Inc.** chini ya uongozi wa mwanzilishi mwenza na Mkurugenzi Mtendaji **Steve Jobs**, aliyeizindua iPhone ya kwanza mnamo **Januari 9, 2007**.\n\n- **Mwanzilishi & Kiongozi wa Mradi**: Steve Jobs\n- **Muundo (Design)**: Jony Ive\n- **Uhandisi wa Vifaa na Programu**: Tony Fadell, Scott Forstall na timu ya Apple.`;
     }
-    return {
-      content: `We offer **free shipping on all orders over $50 USD**. Standard shipping takes **3–5 business days** ($4.99), and Express Priority takes **1–2 business days** ($12.99).`,
-    };
+    return `The **iPhone** was created and developed by **Apple Inc.** under the visionary leadership of Apple co-founder and CEO **Steve Jobs**, who unveiled the first-generation iPhone on **January 9, 2007** (and released it on June 29, 2007).\n\n- **Visionary & Project Leader**: Steve Jobs (who co-founded Apple with Steve Wozniak and Ronald Wayne)\n- **Lead Industrial Designer**: Sir Jony Ive\n- **Key Hardware & Software Leaders**: Tony Fadell, Scott Forstall, and Apple's engineering team.`;
   }
 
-  // 6. DISCOUNTS, COUPONS & DEALS
-  if (
-    q.includes('coupon') ||
-    q.includes('discount') ||
-    q.includes('promo') ||
-    q.includes('deal') ||
-    q.includes('code') ||
-    q.includes('remise') ||
-    q.includes('punguzo') ||
-    q.includes('offer') ||
-    q.includes('sale')
-  ) {
+  // 2. Android / Samsung / Google / Microsoft / Tesla / SpaceX / Facebook / Amazon
+  if (/\b(who|created|invented|founded|founder|qui|ninde|nani)\b/i.test(q)) {
+    if (q.includes('android')) {
+      return lang === 'fr'
+        ? `**Android** a été créé en **octobre 2003** par **Andy Rubin, Rich Miner, Nick Sears et Chris White**, puis racheté par **Google** en 2005.`
+        : `**Android** was founded in **October 2003** by **Andy Rubin, Rich Miner, Nick Sears, and Chris White**, and was acquired by **Google** in 2005.`;
+    }
+    if (q.includes('microsoft') || q.includes('windows')) {
+      return lang === 'fr'
+        ? `**Microsoft** a été fondée le **4 avril 1975** par **Bill Gates** et **Paul Allen**.`
+        : `**Microsoft** was founded on **April 4, 1975** by **Bill Gates** and **Paul Allen**.`;
+    }
+    if (q.includes('tesla') || q.includes('spacex')) {
+      return lang === 'fr'
+        ? `**SpaceX** a été fondée en 2002 par **Elon Musk**. **Tesla** a été fondée en 2003 par Martin Eberhard et Marc Tarpenning, et **Elon Musk** en est devenu l'actionnaire principal et PDG.`
+        : `**SpaceX** was founded in 2002 by **Elon Musk**. **Tesla** was founded in 2003 by Martin Eberhard and Marc Tarpenning, with **Elon Musk** joining shortly after as largest shareholder and CEO.`;
+    }
+    if (q.includes('facebook') || q.includes('meta') || q.includes('instagram') || q.includes('whatsapp')) {
+      return `**Facebook (Meta)** was founded in **2004** by **Mark Zuckerberg** along with Eduardo Saverin, Andrew McCollum, Dustin Moskovitz, and Chris Hughes. **Instagram** was created by Kevin Systrom and Mike Krieger (2010), and **WhatsApp** was founded by Jan Koum and Brian Acton (2009).`;
+    }
+    if (q.includes('google')) {
+      return `**Google** was founded on **September 4, 1998** by **Larry Page** and **Sergey Brin** while they were PhD students at Stanford University.`;
+    }
+    if (q.includes('amazon')) {
+      return `**Amazon** was founded on **July 5, 1994** by **Jeff Bezos** in Bellevue, Washington.`;
+    }
+    if (q.includes('telephone') || q.includes('phone')) {
+      return `The first practical **telephone** was invented and patented by **Alexander Graham Bell** in **1876**. The first handheld mobile phone was demonstrated by **Martin Cooper** at Motorola in **1973**, and the first **iPhone** was unveiled by **Steve Jobs** at Apple in **2007**.`;
+    }
+    if (q.includes('computer')) {
+      return `**Charles Babbage** is considered the "father of the computer" for designing the Analytical Engine in the 1830s, while **Ada Lovelace** was the world's first computer programmer. Modern electronic computing was pioneered by **Alan Turing**, **John von Neumann**, and **Konrad Zuse**.`;
+    }
+    if (q.includes('internet') || q.includes('web') || q.includes('www')) {
+      return `The foundational protocols of the **Internet (TCP/IP)** were developed by **Vint Cerf** and **Bob Kahn** in the 1970s, while the **World Wide Web (WWW)** was invented by British computer scientist **Sir Tim Berners-Lee** in **1989** at CERN.`;
+    }
+  }
+
+  // 3. Math & Calculations (e.g., "what is 25 * 40", "1500 + 3200")
+  const mathMatch = q.match(/(?:what is|calculate|combien font|ni angahe|ngapi)?\s*(-?\d+(?:\.\d+)?)\s*([+\-*/x×÷])\s*(-?\d+(?:\.\d+)?)/i);
+  if (mathMatch) {
+    const a = parseFloat(mathMatch[1]);
+    const op = mathMatch[2];
+    const b = parseFloat(mathMatch[3]);
+    let result: number | null = null;
+    if (op === '+') result = a + b;
+    else if (op === '-') result = a - b;
+    else if (op === '*' || op === 'x' || op === '×') result = a * b;
+    else if ((op === '/' || op === '÷') && b !== 0) result = Number((a / b).toFixed(4));
+
+    if (result !== null && !Number.isNaN(result)) {
+      if (lang === 'fr') return `Le résultat de **${a} ${op} ${b}** est **${result.toLocaleString()}**.`;
+      if (lang === 'rw') return `Igisubizo cya **${a} ${op} ${b}** ni **${result.toLocaleString()}**.`;
+      if (lang === 'sw') return `Jibu la **${a} ${op} ${b}** ni **${result.toLocaleString()}**.`;
+      return `The answer to **${a} ${op} ${b}** is **${result.toLocaleString()}**.`;
+    }
+  }
+
+  // 4. Current Date / Time
+  if (/\b(what time|what day|today's date|what date|current date|quelle heure|quelle date|ni saa ngahe|italiki ya none|saa ngapi|tarehe ya leo)\b/i.test(q)) {
+    const now = new Date();
+    return lang === 'fr'
+      ? `Nous sommes aujourd'hui le **${now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}**, et il est **${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}**.`
+      : lang === 'rw'
+      ? `Uyu munsi ni ku wa **${now.toLocaleDateString('en-RW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}**, isaha ni **${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}**.`
+      : lang === 'sw'
+      ? `Leo ni **${now.toLocaleDateString('sw-KE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}**, saa **${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}**.`
+      : `Today is **${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}**, and the current time is **${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}**.`;
+  }
+
+  // 5. Rwanda / Kigali general questions
+  if (/\b(rwanda|kigali)\b/i.test(q) && /\b(capital|about|where|country|president|currency|language|population)\b/i.test(q)) {
     if (lang === 'fr') {
-      return {
-        content: `Vous pouvez utiliser le code **WELCOME10** pour obtenir **10% de réduction** sur toute la boutique, ou **SAVE20** pour **20% de réduction** dès $150 d'achat lors du paiement.`,
-      };
+      return `Le **Rwanda** (surnommé le *Pays des Mille Collines*) est un pays d'Afrique de l'Est dont la capitale est **Kigali**.\n\n- **Capitale** : Kigali\n- **Monnaie** : Franc rwandais (RWF)\n- **Langues officielles** : Kinyarwanda, Anglais, Français et Swahili.`;
     }
     if (lang === 'rw') {
+      return `**U Rwanda** (*Igihugu cy'Imisozi Igihumbi*) ni igihugu giherereye muri Afurika y'Iburasirazuba, umurwa mukuru wacyo ukaba ari **Kigali**.\n\n- **Umurwa mukuru**: Kigali\n- **Ifaranga**: Ifaranga ry'u Rwanda (RWF / FRw)\n- **Indimi zemewe**: Ikinyarwanda, Icyongereza, Igifaransa n'Igiswahili.`;
+    }
+    return `**Rwanda** (known as the *Land of a Thousand Hills*) is an East African nation whose capital and largest city is **Kigali**.\n\n- **Capital**: Kigali\n- **Currency**: Rwandan Franc (RWF)\n- **Official Languages**: Kinyarwanda, English, French, and Swahili.`;
+  }
+
+  return null;
+}
+
+/**
+ * Intelligent multilingual responder when backend Gemini API is not reachable.
+ */
+async function generateIntelligentItuzeResponse(
+  userMessage: string,
+  intent: UserIntent,
+  context: StoreContextData,
+  lang: LangCode,
+  userName?: string | null,
+  matchedProducts: ChatProductCard[] = [],
+  lookedUpOrder: ChatOrderCard | null = null
+): Promise<{ reply: string; matchedOrders: ChatOrderCard[] }> {
+  const effectiveLang = detectMessageLanguage(userMessage, lang);
+  const nameGreeting = userName ? ` ${userName}` : '';
+
+  // 0. Identity ("What is your name?", "Who are you?")
+  if (intent === 'identity') {
+    if (effectiveLang === 'fr') {
       return {
-        content: `Koresha kodi **WELCOME10** ubone **igabanuka rya 10%**, cyangwa **SAVE20** ubone **igabanuka rya 20%** kuri komande irengeje $150 wishyura.`,
+        reply: `Je m'appelle **ITUZE AI** ! 🤖✨\n\nJe suis l'assistant intelligent officiel d'**Ituze**. Je peux :\n- Répondre à toutes vos **questions de la vie réelle et de culture générale** (sciences, histoire, technologie, calculs, etc.)\n- Vous aider à **suivre vos commandes**, découvrir nos **produits**, ou vérifier nos options de **livraison et paiement**.\n\nQue puis-je faire pour vous aujourd'hui ?`,
+        matchedOrders: [],
       };
     }
-    if (lang === 'sw') {
+    if (effectiveLang === 'rw') {
       return {
-        content: `Tumia kodi **WELCOME10** kupata **punguzo la 10%**, au **SAVE20** kupata **punguzo la 20%** kwa maagizo zaidi ya $150 wakati wa kulipa.`,
+        reply: `Nitwa **ITUZE AI**! 🤖✨\n\nNdi umufasha wawe w'ubwenge ku rubuga rwa **Ituze**. Nshobora:\n- Kugusubiza **ibibazo byose byo mu buzima busanzwe n'ubumenyi rusange** (ikoranabuhanga, amateka, siyansi, imibare, n'ibindi)\n- Kugufasha **gukurikirana komande zawe**, kureba **ibicuruzwa**, no kumenya amakuru yo **kugeza ibicuruzwa cyangwa kwishyura**.\n\nNakugirira akahe kamaro uyu munsi?`,
+        matchedOrders: [],
+      };
+    }
+    if (effectiveLang === 'sw') {
+      return {
+        reply: `Jina langu ni **ITUZE AI**! 🤖✨\n\nMimi ni msaidizi wako mahiri wa AI kwenye duka la **Ituze**. Ninaweza:\n- Kujibu **maswali yoyote ya maisha halisi na maarifa ya jumla** (teknolojia, historia, sayansi, hesabu, n.k.)\n- Kukusaidia **kufuatilia maagizo yako**, kupata **bidhaa**, na kuangalia sera za **usafirishaji na malipo**.\n\nNaweza kukusaidia na nini leo?`,
+        matchedOrders: [],
       };
     }
     return {
-      content: `You can use code **WELCOME10** at checkout for **10% OFF** any order, or **SAVE20** for **20% OFF** orders over $150 USD.`,
+      reply: `I am **ITUZE AI**! 🤖✨\n\nI am your intelligent AI assistant here on **Ituze**. I can help you in two ways:\n- Answer **any real-life or general knowledge questions** (technology, history, science, math, everyday advice, and more)\n- Help you **track orders**, explore **store products**, or check **shipping, returns, and payment** details.\n\nWhat would you like to ask me today?`,
+      matchedOrders: [],
     };
   }
 
-  // 7. RETURNS & REFUNDS
-  if (
-    q.includes('return') ||
-    q.includes('refund') ||
-    q.includes('retour') ||
-    q.includes('rembours') ||
-    q.includes('gusubiza') ||
-    q.includes('kurudisha') ||
-    q.includes('exchange') ||
-    q.includes('warranty')
-  ) {
-    if (lang === 'fr') {
+  // 1. Greeting — short, friendly, NO products attached
+  if (intent === 'greeting') {
+    if (effectiveLang === 'fr') {
       return {
-        content: `Vous disposez de **30 jours** après la livraison pour retourner un article dans son état d'origine et obtenir un remboursement complet sous 3 à 5 jours ouvrés.`,
+        reply: `Bonjour${nameGreeting} ! 👋 Je suis **ITUZE AI**. Comment puis-je vous aider aujourd'hui ? Vous pouvez me poser n'importe quelle question générale ou me demander de l'aide sur la boutique Ituze !`,
+        matchedOrders: [],
       };
     }
-    if (lang === 'rw') {
+    if (effectiveLang === 'rw') {
       return {
-        content: `Ufite **iminsi 30** nyuma yo kwakira igicuruzwa yo kukisubiza kikiri gishya ukishyurwa amafaranga yawe yose mu minsi 3–5 y'akazi.`,
+        reply: `Muraho${nameGreeting}! 👋 Nitwa **ITUZE AI**. Nabafasha iki uyu munsi? Mushobora kumbaza ikibazo cyose cyo mu buzima busanzwe cyangwa ibijyanye n'iduka rya Ituze!`,
+        matchedOrders: [],
       };
     }
-    if (lang === 'sw') {
+    if (effectiveLang === 'sw') {
       return {
-        content: `Una **siku 30** baada ya kupokea bidhaa kuirudisha ikiwa katika hali yake ya asili na kurejeshewa pesa kamili ndani ya siku 3–5 za kazi.`,
+        reply: `Habari${nameGreeting}! 👋 Mimi ni **ITUZE AI**. Naweza kukusaidia vipi leo? Unaweza kuniuliza swali lolote la maisha halisi au kuhusu duka la Ituze!`,
+        matchedOrders: [],
       };
     }
     return {
-      content: `We offer a **30-day hassle-free return policy**. Unused items in original packaging can be returned within 30 days for a full refund within 3–5 business days.`,
+      reply: `Hey${nameGreeting}! 👋 I am **ITUZE AI**. How can I help you today? Feel free to ask me any real-life question, or ask about orders, shipping, and products on Ituze!`,
+      matchedOrders: [],
     };
   }
 
-  // 8. PAYMENT METHODS
-  if (
-    q.includes('pay') ||
-    q.includes('paiement') ||
-    q.includes('kwishyura') ||
-    q.includes('kulipa') ||
-    q.includes('momo') ||
-    q.includes('airtel') ||
-    q.includes('visa') ||
-    q.includes('mastercard') ||
-    q.includes('card')
-  ) {
+  // 2. Thanks / Goodbye — short & warm, NO products attached
+  if (intent === 'thanks') {
+    if (effectiveLang === 'fr') {
+      return {
+        reply: `Je vous en prie${nameGreeting} ! N'hésitez pas si vous avez d'autres questions. Bonne journée avec **ITUZE AI** !`,
+        matchedOrders: [],
+      };
+    }
+    if (effectiveLang === 'rw') {
+      return {
+        reply: `Murakoze cyane${nameGreeting}! Niba hari ikindi kibazo mugize, mbwira rwose. Mugire umunsi mwiza hamwe na **ITUZE AI**!`,
+        matchedOrders: [],
+      };
+    }
+    if (effectiveLang === 'sw') {
+      return {
+        reply: `Karibu sana${nameGreeting}! Usisite kuniuliza ukiwa na swali lingine lolote. Uwe na siku njema na **ITUZE AI**!`,
+        matchedOrders: [],
+      };
+    }
     return {
-      content:
-        lang === 'fr'
-          ? `Nous acceptons **MTN Mobile Money (MoMo)**, **Airtel Money**, les cartes **Visa / Mastercard** ainsi que **PayPal**. Toutes les transactions sont protégées par chiffrement SSL 256 bits.`
-          : lang === 'rw'
-          ? `Twemera kwishyura ukoresheje **MTN MoMo**, **Airtel Money**, amakarita ya **Visa / Mastercard** na **PayPal** mu mutekano usesuye.`
-          : lang === 'sw'
-          ? `Tunakubali malipo kupitia **MTN MoMo**, **Airtel Money**, kadi za **Visa / Mastercard**, na **PayPal** kwa usalama kamili.`
-          : `We accept **MTN Mobile Money (MoMo)**, **Airtel Money**, **Visa**, **Mastercard**, and **PayPal**. All payments are encrypted with 256-bit SSL security.`,
+      reply: `You're very welcome${nameGreeting}! Let me know anytime you have another question. Have a wonderful day from **ITUZE AI**!`,
+      matchedOrders: [],
     };
   }
 
-  // 9. CONTACT & CUSTOMER SUPPORT
-  if (
-    q.includes('contact') ||
-    q.includes('support') ||
-    q.includes('help') ||
-    q.includes('phone') ||
-    q.includes('email') ||
-    q.includes('service client') ||
-    q.includes('ubufasha') ||
-    q.includes('msaada')
-  ) {
+  // 3. Order Tracking
+  if (intent === 'order') {
+    if (lookedUpOrder) {
+      return {
+        reply:
+          effectiveLang === 'fr'
+            ? `J'ai trouvé votre commande **#${lookedUpOrder.order_number}** ! Son statut actuel est **${lookedUpOrder.status.toUpperCase()}** (Paiement : **${lookedUpOrder.payment_status}**). Cliquez sur la carte ci-dessous pour voir le suivi complet :`
+            : effectiveLang === 'rw'
+            ? `Nabonye komande yawe **#${lookedUpOrder.order_number}**! Imerewe gutya: **${lookedUpOrder.status.toUpperCase()}** (Kwishyura: **${lookedUpOrder.payment_status}**). Kanda ku ikarita iri hasi urebe aho igeze:`
+            : effectiveLang === 'sw'
+            ? `Nimepata agizo lako **#${lookedUpOrder.order_number}**! Hali yake ni **${lookedUpOrder.status.toUpperCase()}** (Malipo: **${lookedUpOrder.payment_status}**). Bofya kadi hapa chini kuona maelezo kamili:`
+            : `I found order **#${lookedUpOrder.order_number}**! Its current status is **${lookedUpOrder.status.toUpperCase()}** (Payment: **${lookedUpOrder.payment_status}**). Click the order card below to view full tracking details:`,
+        matchedOrders: [lookedUpOrder],
+      };
+    }
+
+    if (context.orders.length > 0) {
+      return {
+        reply:
+          effectiveLang === 'fr'
+            ? `Voici vos commandes récentes${nameGreeting}. Cliquez sur une commande ci-dessous pour suivre son statut en temps réel :`
+            : effectiveLang === 'rw'
+            ? `Dore komande zawe za vuba${nameGreeting}. Kanda kuri komande iri hasi kugira ngo ukurikirane aho igeze:`
+            : effectiveLang === 'sw'
+            ? `Haya hapa ni maagizo yako ya hivi karibuni${nameGreeting}. Bofya agizo lolote hapa chini kufuatilia hali yake:`
+            : `Here are your recent orders${nameGreeting}. Click any order card below to track its real-time delivery progress:`,
+        matchedOrders: context.orders.slice(0, 3),
+      };
+    }
+
     return {
-      content:
-        lang === 'fr'
-          ? `Vous pouvez joindre notre équipe 24h/24 par email à **hello@ituze.com**, par téléphone/WhatsApp au **+250 788 123 456**, ou via notre [Page de contact](/contact).`
-          : lang === 'rw'
-          ? `ushobora kutuvugisha kuri email **hello@ituze.com**, telefone/WhatsApp **+250 788 123 456**, cyangwa ku [Rupapuro rwo kutwandikira](/contact).`
-          : lang === 'sw'
-          ? `Unaweza kuwasiliana nasi saa 24 kupitia barua pepe **hello@ituze.com**, simu/WhatsApp **+250 788 123 456**, au kwenye [Ukurasa wa Mawasiliano](/contact).`
-          : `You can reach our support team 24/7 at **hello@ituze.com**, via phone/WhatsApp at **+250 788 123 456**, or through our [Contact Page](/contact).`,
+      reply:
+        effectiveLang === 'fr'
+          ? `Pour suivre une commande, veuillez vous connecter à votre compte et visiter **Mon Compte → Commandes**, ou envoyez-moi directement votre numéro de commande (par ex. **ORD-2026-8912**).`
+          : effectiveLang === 'rw'
+          ? `Kugira ngo ukurikirane komande yawe, injira muri konti yawe ujye kuri **Konti Yanjye → Komande**, cyangwa umbwire nimero ya komande yawe (urugero: **ORD-2026-8912**).`
+          : effectiveLang === 'sw'
+          ? `Ili kufuatilia agizo lako, tafadhali ingia kwenye akaunti yako (**Akaunti Yangu → Maagizo**) au nitumie nambari yako ya agizo (mfano **ORD-2026-8912**).`
+          : `To track an order, please sign in to your account and open **My Account → Orders**, or type your order number right here (for example **ORD-2026-8912**) and I'll look it up for you.`,
+      matchedOrders: [],
     };
   }
 
-  // 10. ACCOUNT / LOGIN / SIGNUP QUESTIONS
-  if (
-    q.includes('account') ||
-    q.includes('login') ||
-    q.includes('sign in') ||
-    q.includes('sign up') ||
-    q.includes('register') ||
-    q.includes('password') ||
-    q.includes('compte') ||
-    q.includes('konti') ||
-    q.includes('akaunti')
-  ) {
+  // 4. Shipping & Delivery
+  if (intent === 'shipping') {
+    if (effectiveLang === 'fr') {
+      return {
+        reply: `Voici nos options de livraison chez **Ituze** :\n- **Livraison Gratuite** : Sur toutes les commandes de plus de **50 000 RWF** à Kigali\n- **Kigali Express (Même jour)** : 5 000 RWF (livré en quelques heures)\n- **Kigali Standard** : 2 500 RWF (1 à 2 jours ouvrables)\n- **Provinces du Rwanda** : 4 500 RWF (2 à 4 jours ouvrables)\n- **Afrique de l'Est** : 15 000 RWF (5 à 7 jours ouvrables)`,
+        matchedOrders: [],
+      };
+    }
+    if (effectiveLang === 'rw') {
+      return {
+        reply: `Dore uko tugeza ibicuruzwa ku bakiriya muri **Ituze**:\n- **Ubuntu i Kigali**: Ku bicuruzwa birengeje **50,000 RWF**\n- **Kigali Express (Uwo munsi)**: 5,000 RWF\n- **Kigali Bisanzwe**: 2,500 RWF (iminsi 1–2)\n- **Mu Ntara zose z'u Rwanda**: 4,500 RWF (iminsi 2–4)\n- **Akarere ka Afurika y'Iburasirazuba**: 15,000 RWF (iminsi 5–7)`,
+        matchedOrders: [],
+      };
+    }
+    if (effectiveLang === 'sw') {
+      return {
+        reply: `Chaguo zetu za usafirishaji katika **Ituze**:\n- **Usafirishaji wa Bure**: Kwa maagizo zaidi ya **50,000 RWF** ndani ya Kigali\n- **Kigali Express (Siku Hiyo Hiyo)**: 5,000 RWF\n- **Kigali ya Kawaida**: 2,500 RWF (Siku 1–2)\n- **Mikoani Rwanda**: 4,500 RWF (Siku 2–4)\n- **Afrika Mashariki**: 15,000 RWF (Siku 5–7)`,
+        matchedOrders: [],
+      };
+    }
     return {
-      content:
-        lang === 'fr'
-          ? `Vous pouvez vous [connecter ici](/auth/login) ou [créer un compte](/auth/register) avec votre adresse email et mot de passe pour accéder à votre tableau de bord et suivre vos commandes.`
-          : lang === 'rw'
-          ? `Ushobora [kwinjira hano](/auth/login) cyangwa [gufungura konti](/auth/register) ukoresheje email yawe n'ijambobanga kugira ngo ukurikirane komande zawe.`
-          : lang === 'sw'
-          ? `Unaweza [kuingia hapa](/auth/login) au [kufungua akaunti](/auth/register) kwa barua pepe na neno la siri ili kufuatilia maagizo yako kwenye dashibodi.`
-          : `You can easily [Sign In](/auth/login) or [Create an Account](/auth/register) using your email and password to access your personal dashboard and track your orders in real time.`,
+      reply: `Here are our delivery options at **Ituze**:\n- **Free Shipping**: On all orders over **50,000 RWF** in Kigali\n- **Kigali Express (Same-Day)**: 5,000 RWF\n- **Kigali Standard**: 2,500 RWF (1–2 business days)\n- **Provincial Delivery (All Rwanda)**: 4,500 RWF (2–4 business days)\n- **East Africa Regional**: 15,000 RWF (5–7 business days)`,
+      matchedOrders: [],
     };
   }
 
-  // 11. CONCISE, NATURAL DEFAULT RESPONSE (No unsolicited products or wall of text)
-  if (lang === 'fr') {
+  // 5. Returns & Refunds
+  if (intent === 'returns') {
+    if (effectiveLang === 'fr') {
+      return {
+        reply: `Notre politique de retour est simple et sans tracas :\n- **Garantie de 30 jours** pour retourner ou échanger un article non utilisé dans son emballage d'origine.\n- **Remboursement rapide** via MTN MoMo, Airtel Money ou votre carte bancaire sous 3 à 5 jours ouvrables.`,
+        matchedOrders: [],
+      };
+    }
+    if (effectiveLang === 'rw') {
+      return {
+        reply: `Politiki yo gusubiza ibicuruzwa muri **Ituze**:\n- Ufite **iminsi 30** yo gusubiza cyangwa guhindura igicuruzwa kitakoreshejwe kikiri mu gipfunyika cyacyo.\n- **Gusubizwa amafaranga** bikorwa mu minsi 3–5 kuri MTN MoMo, Airtel Money cyangwa ikarita ya banki.`,
+        matchedOrders: [],
+      };
+    }
+    if (effectiveLang === 'sw') {
+      return {
+        reply: `Sera yetu ya kurudisha bidhaa katika **Ituze**:\n- **Siku 30 za kurudisha** bidhaa ambayo haijatumika ikiwa kwenye kifungashio chake cha awali.\n- **Marejesho ya pesa** hufanyika ndani ya siku 3–5 kupitia MTN MoMo, Airtel Money au kadi ya benki.`,
+        matchedOrders: [],
+      };
+    }
     return {
-      content: `Je suis là pour vous aider ! Posez-moi une question sur le suivi d'une commande (ex: ORD-2026-8912), la livraison, les retours, ou demandez-moi de vous montrer des produits.`,
+      reply: `We offer a **30-day hassle-free return policy** at **Ituze**:\n- Items must be unused and in their original packaging.\n- Refunds are processed within **3–5 business days** back to your MTN MoMo, Airtel Money, or payment card.\n- Defective or damaged items qualify for a free immediate replacement.`,
+      matchedOrders: [],
     };
   }
-  if (lang === 'rw') {
+
+  // 6. Payment Methods
+  if (intent === 'payment') {
+    if (effectiveLang === 'fr') {
+      return {
+        reply: `Nous acceptons les moyens de paiement sécurisés suivants :\n- **MTN Mobile Money (MoMo)** & **Airtel Money**\n- **Cartes Visa & Mastercard** (sécurisées par cryptage SSL 256 bits)\n- **Paiement à la livraison** (disponible à Kigali)`,
+        matchedOrders: [],
+      };
+    }
+    if (effectiveLang === 'rw') {
+      return {
+        reply: `Uburyo bwo kwishyura bwemewe muri **Ituze**:\n- **MTN Mobile Money (MoMo)** na **Airtel Money**\n- **Amakarita ya Visa & Mastercard**\n- **Kwishyura ibicuruzwa bikugezeho** (mu mujyi wa Kigali)`,
+        matchedOrders: [],
+      };
+    }
     return {
-      content: `Ndi hano ngo ngufashe! Ushobora kumbaza ibyerekeye gukurikirana komande yawe (urugero: ORD-2026-8912), kugeza ibicuruzwa, cyangwa ukansaba kukwereka ibicuruzwa bihari.`,
+      reply: `We accept multiple secure payment methods on **Ituze**:\n- **MTN Mobile Money (MoMo)** & **Airtel Money**\n- **Visa & Mastercard** debit/credit cards (256-bit SSL encrypted)\n- **Cash on Delivery** (available for Kigali orders)`,
+      matchedOrders: [],
     };
   }
-  if (lang === 'sw') {
+
+  // 7. Discounts & Coupons
+  if (intent === 'discount') {
+    if (effectiveLang === 'fr') {
+      return {
+        reply: `Voici nos codes promotionnels actifs :\n- **WELCOME10** : 10% de réduction sur votre première commande\n- **SAVE20** : 20% de réduction sur les commandes de plus de 50 000 RWF\n- **FREESHIP** : Livraison standard gratuite`,
+        matchedOrders: [],
+      };
+    }
+    if (effectiveLang === 'rw') {
+      return {
+        reply: `Dore kode za poromosiyo ziri gukora muri **Ituze**:\n- **WELCOME10**: Igabanyirizwa rya 10% kuri komande yawe ya mbere\n- **SAVE20**: Igabanyirizwa rya 20% kuri komande irengeje 50,000 RWF\n- **FREESHIP**: Kugezwaho ibicuruzwa ku buntu`,
+        matchedOrders: [],
+      };
+    }
     return {
-      content: `Niko hapa kukusaidia! Unaweza kuniuliza kuhusu kufuatilia agizo lako (mfano: ORD-2026-8912), usafirishaji, au uniombe nikuonyeshe bidhaa zetu.`,
+      reply: `Here are our active promo codes you can apply at checkout:\n- **WELCOME10** — 10% off your first order\n- **SAVE20** — 20% off orders over 50,000 RWF\n- **FREESHIP** — Free standard shipping`,
+      matchedOrders: [],
     };
   }
+
+  // 8. Contact / Support
+  if (intent === 'contact') {
+    return {
+      reply: `You can reach the **Ituze Support Team** directly:\n- **Email**: support@ituze.rw\n- **Phone / WhatsApp**: +250 788 000 000\n- **Hours**: Monday – Saturday, 8:00 AM – 8:00 PM CAT\n- **Contact Page**: Visit **/contact** from the top navigation menu.`,
+      matchedOrders: [],
+    };
+  }
+
+  // 9. Product Inquiry — ONLY show products when user explicitly asked about products!
+  if (intent === 'product') {
+    if (matchedProducts.length > 0) {
+      return {
+        reply:
+          effectiveLang === 'fr'
+            ? `Voici les meilleurs produits disponibles dans notre catalogue qui correspondent à votre demande :`
+            : effectiveLang === 'rw'
+            ? `Dore ibicuruzwa byiza bihuye n'ibyo mwifuje biboneka mu iduka ryacu:`
+            : effectiveLang === 'sw'
+            ? `Hizi hapa ni bidhaa bora zinazolingana na hitaji lako:`
+            : `Here are the top matching products currently available in our store:`,
+        matchedOrders: [],
+      };
+    }
+    return {
+      reply:
+        effectiveLang === 'fr'
+          ? `Nous avons plusieurs catégories populaires (${context.categories.join(', ') || 'Électronique, Mode, Maison, Accessoires'}). Quel type de produit recherchez-vous exactement ?`
+          : `We carry a curated collection across **${context.categories.join(', ') || 'Electronics, Fashion, Home & Living, and Accessories'}**. Tell me what item or budget you have in mind and I'll find the best options for you!`,
+      matchedOrders: [],
+    };
+  }
+
+  // 10. Real-Life & General Knowledge Questions:
+  // First check curated real-life knowledge & math
+  const curatedAnswer = answerCuratedRealLifeQuestion(userMessage, effectiveLang);
+  if (curatedAnswer) {
+    return { reply: curatedAnswer, matchedOrders: [] };
+  }
+
+  // Next query live Wikipedia / DuckDuckGo public APIs in the user's language
+  const liveKnowledge = await fetchLiveKnowledgeAnswer(userMessage, effectiveLang);
+  if (liveKnowledge) {
+    return { reply: liveKnowledge, matchedOrders: [] };
+  }
+
+  // Friendly, thoughtful conversational response if no encyclopedia article matched
+  if (effectiveLang === 'fr') {
+    return {
+      reply: `Je suis **ITUZE AI**, votre assistant intelligent ! 🤖\n\nConcernant votre message (*« ${userMessage} »*), pourriez-vous préciser un peu plus votre question ? Je peux répondre à vos questions sur **l'histoire, la technologie, la science, les calculs**, ou vous aider avec **vos commandes et produits Ituze**.`,
+      matchedOrders: [],
+    };
+  }
+  if (effectiveLang === 'rw') {
+    return {
+      reply: `Ndi **ITUZE AI**, umufasha wawe w'ubwenge! 🤖\n\nKu bijyanye n'ikibazo cyawe (*"${userMessage}"*), ushobora kukivuga mu bundi buryo bworoheje? Nshobora kugusubiza ku **ikoranabuhanga, amateka, siyansi, imibare**, cyangwa ibijyanye na **komande n'ibicuruzwa bya Ituze**.`,
+      matchedOrders: [],
+    };
+  }
+  if (effectiveLang === 'sw') {
+    return {
+      reply: `Mimi ni **ITUZE AI**, msaidizi wako mahiri! 🤖\n\nKuhusu swali lako (*"${userMessage}"*), unaweza kulifafanua kidogo? Ninaweza kujibu maswali ya **teknolojia, historia, sayansi, hesabu**, au kukusaidia kuhusu **maagizo na bidhaa za Ituze**.`,
+      matchedOrders: [],
+    };
+  }
+
   return {
-    content: `I'd be happy to help with that! You can ask me to track an order (e.g., **ORD-2026-8912**), check shipping or return policies, or ask me to recommend products whenever you're ready.`,
+    reply: `I am **ITUZE AI**, your intelligent assistant! 🤖\n\nRegarding *"${userMessage}"* — could you share a little more detail or rephrase your question? I can answer real-life questions about **technology, history, science, famous people, and math**, as well as help with **Ituze orders, shipping, and products**!`,
+    matchedOrders: [],
   };
 }
 
-export async function sendChatMessage(
-  message: string,
+/**
+ * Send user message to the server-side Gemini API (/api/chat) or use intelligent multilingual + live knowledge engine.
+ * Strictly attaches product cards ONLY when the user's intent is 'product'.
+ */
+export async function sendMessageToItuzeAI(
+  userMessage: string,
   history: ChatMessage[],
-  userId?: string,
-  userName?: string,
-  lang = 'en'
-): Promise<AssistantResponse> {
-  const [popularProducts, userOrders] = await Promise.all([
-    fetchPopularProducts(),
-    fetchUserOrders(userId),
-  ]);
+  context: StoreContextData,
+  lang: LangCode,
+  userName?: string | null
+): Promise<{
+  reply: string;
+  matchedProducts: ChatProductCard[];
+  matchedOrders: ChatOrderCard[];
+}> {
+  const intent = detectUserIntent(userMessage);
+  const effectiveLang = detectMessageLanguage(userMessage, lang);
 
-  const orderNumberMatch = message.match(/ORD-[\w\d-]+/i);
-  let specificOrder: OrderSummary | null = null;
-  if (orderNumberMatch) {
-    specificOrder = await findOrderByNumber(orderNumberMatch[0]);
+  // ONLY find matching products if the user explicitly asked for products!
+  const matchedProducts = intent === 'product' ? findMatchingProducts(userMessage, context.products) : [];
+
+  // Check if the user typed a specific order number (e.g., ORD-2026-8912)
+  let lookedUpOrder: ChatOrderCard | null = null;
+  const orderNumMatch = userMessage.match(/ORD-[A-Z0-9-]+/i);
+  if (orderNumMatch) {
+    lookedUpOrder = await lookupOrderByNumber(orderNumMatch[0]);
   }
 
-  const wantsProducts = isExplicitProductInquiry(message);
-  const qLower = message.trim().toLowerCase();
-  const isOrderQuery =
-    Boolean(specificOrder) ||
-    qLower.includes('order') ||
-    qLower.includes('track') ||
-    qLower.includes('commande') ||
-    qLower.includes('suivi') ||
-    qLower.includes('komande') ||
-    qLower.includes('agizo');
+  const storeSummary = context.products
+    .slice(0, 15)
+    .map((p) => {
+      const price = p.sale_price ?? p.base_price;
+      return `- ${p.name} (${p.category || 'General'}): ${price.toLocaleString()} ${p.currency}`;
+    })
+    .join('\n');
 
-  // Call the server-side Gemini endpoint (/api/chat)
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 4500);
+  const ordersContext =
+    lookedUpOrder
+      ? `Looked up order: #${lookedUpOrder.order_number} | Status: ${lookedUpOrder.status} | Payment: ${lookedUpOrder.payment_status} | Total: ${lookedUpOrder.total.toLocaleString()} ${lookedUpOrder.currency}`
+      : context.orders.length > 0
+      ? context.orders
+          .map(
+            (o) =>
+              `- Order #${o.order_number}: Status=${o.status}, Payment=${o.payment_status}, Total=${o.total.toLocaleString()} ${o.currency}`
+          )
+          .join('\n')
+      : 'No recent orders on file.';
 
   try {
-    const productsContext = popularProducts
-      .map(
-        (p) =>
-          `- ${p.name} ($${p.sale_price ?? p.base_price} ${p.currency}, Category: ${p.category}): ${p.short_description || ''}`
-      )
-      .join('\n');
-
-    const ordersContext =
-      userOrders.length > 0
-        ? userOrders
-            .map(
-              (o) =>
-                `- Order #${o.order_number}: Status "${o.status}", Total: $${o.total} ${o.currency}, Placed ${new Date(o.created_at).toLocaleDateString()}, Items: ${o.items_summary?.join(', ') || 'Items'}`
-            )
-            .join('\n')
-        : 'No past orders.';
-
-    const systemContext = `Customer: ${userId ? `Logged in as ${userName || 'Customer'}` : 'Guest'}
-Customer Orders:
-${ordersContext}${specificOrder ? `\nLooked up Order: #${specificOrder.order_number} (Status: ${specificOrder.status}, Total: $${specificOrder.total} ${specificOrder.currency})` : ''}
-Store Catalog (ONLY mention if user explicitly asks for products):
-${productsContext}
-Store Policies: Free shipping over $50. Standard shipping $4.99 (3-5 days). Express $12.99 (1-2 days). 30-day returns. Payment: MTN MoMo, Airtel Money, Visa, Mastercard, PayPal. Active Coupons: WELCOME10 (10% off), SAVE20 (20% off over $150).`;
-
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message,
-        history: history.slice(-6).map((m) => ({ role: m.role, content: m.content })),
-        systemContext,
-        lang,
+        userMessage,
+        history: history.slice(-6).map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+        })),
+        lang: effectiveLang,
+        storeSummary,
+        ordersContext,
+        userContext: userName ? `Logged in as ${userName}` : 'Guest shopper',
+        intent,
       }),
-      signal: controller.signal,
     });
-
-    clearTimeout(timeoutId);
 
     if (response.ok) {
       const data = await response.json();
-      const replyText = (data?.text || '').trim();
-      if (replyText.length > 0) {
-        const matchedProducts = wantsProducts
-          ? selectMatchingProducts(message, replyText, popularProducts)
-          : undefined;
-
-        const matchedOrders: OrderSummary[] = specificOrder
-          ? [specificOrder]
-          : isOrderQuery && userOrders.length > 0
-          ? userOrders.slice(0, 3)
-          : [];
+      if (data.reply) {
+        const matchedOrders =
+          intent === 'order'
+            ? lookedUpOrder
+              ? [lookedUpOrder]
+              : context.orders.slice(0, 3)
+            : [];
 
         return {
-          content: replyText,
-          matchedProducts: matchedProducts && matchedProducts.length > 0 ? matchedProducts : undefined,
-          matchedOrders: matchedOrders.length > 0 ? matchedOrders : undefined,
+          reply: data.reply,
+          matchedProducts,
+          matchedOrders,
         };
       }
     }
   } catch {
-    // Seamless fallback when running as static build or offline
-  } finally {
-    clearTimeout(timeoutId);
+    // Fall through to intelligent local + live open-knowledge responder
   }
 
-  return generateIntelligentItuzeResponse(
-    message,
-    popularProducts,
-    userOrders,
-    userId,
+  const fallback = await generateIntelligentItuzeResponse(
+    userMessage,
+    intent,
+    context,
+    effectiveLang,
     userName,
-    lang,
-    specificOrder
+    matchedProducts,
+    lookedUpOrder
   );
+
+  return {
+    reply: fallback.reply,
+    matchedProducts,
+    matchedOrders: fallback.matchedOrders,
+  };
 }
+
+/**
+ * Primary entry point used by ChatWidget.tsx
+ */
+export async function sendChatMessage(
+  userMessage: string,
+  history: ChatMessage[],
+  userId?: string | null,
+  userName?: string | null,
+  lang: LangCode = 'en'
+): Promise<{
+  content: string;
+  matchedProducts: ProductSummary[];
+  matchedOrders: OrderSummary[];
+}> {
+  const context = await fetchChatbotContext(userId);
+  const res = await sendMessageToItuzeAI(userMessage, history, context, lang, userName);
+  return {
+    content: res.reply,
+    matchedProducts: res.matchedProducts,
+    matchedOrders: res.matchedOrders,
+  };
+}
+

@@ -3,6 +3,7 @@ import { Search, RefreshCw, TrendingDown, AlertTriangle, Package } from 'lucide-
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
 import { Spinner } from '@/components/shared/Spinner';
 import { Pagination } from '@/components/shared/Pagination';
@@ -27,6 +28,8 @@ type StockFilter = 'all' | 'low' | 'out';
 export default function AdminInventoryPage() {
   const { user } = useAuth();
   const { success, error: toastError } = useToast();
+  const { t } = useT();
+  const ti = t.admin.inventory;
 
   const [rows, setRows] = useState<InventoryRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -77,7 +80,7 @@ export default function AdminInventoryPage() {
 
   const handleRestock = async (row: InventoryRow) => {
     const addQty = parseInt(restocking[row.id] ?? '0');
-    if (isNaN(addQty) || addQty <= 0) { toastError('Enter a positive quantity to add'); return; }
+    if (isNaN(addQty) || addQty <= 0) { toastError(ti.invalidQty); return; }
 
     setSavingId(row.id);
     const newQty = row.quantity_available + addQty;
@@ -87,9 +90,8 @@ export default function AdminInventoryPage() {
       .update({ quantity_available: newQty })
       .eq('id', row.id);
 
-    if (error) { toastError('Restock failed', error.message); }
+    if (error) { toastError(ti.restockFailed, error.message); }
     else {
-      // Log movement
       await supabase.from('inventory_movements').insert({
         inventory_id: row.id,
         actor_id: user?.id ?? null,
@@ -99,7 +101,7 @@ export default function AdminInventoryPage() {
         reference_type: 'manual_adjustment',
         note: 'Manual restock from admin panel',
       });
-      success('Restocked', `+${addQty} units added`);
+      success(ti.restockedTitle, ti.restockedDesc.replace('{qty}', String(addQty)));
       setRestocking(prev => ({ ...prev, [row.id]: '' }));
       load();
     }
@@ -107,35 +109,34 @@ export default function AdminInventoryPage() {
   };
 
   const getStockBadge = (row: InventoryRow) => {
-    if (row.quantity_available <= 0) return <span className="badge badge-danger">Out of Stock</span>;
-    if (row.quantity_available <= row.low_stock_threshold) return <span className="badge badge-warning">Low Stock</span>;
-    return <span className="badge badge-success">In Stock</span>;
+    if (row.quantity_available <= 0) return <span className="badge badge-danger">{ti.outOfStock}</span>;
+    if (row.quantity_available <= row.low_stock_threshold) return <span className="badge badge-warning">{ti.lowStock}</span>;
+    return <span className="badge badge-success">{ti.inStock}</span>;
   };
 
-  // KPI counts derived from current page (for quick overview)
   const outCount = rows.filter(r => r.quantity_available <= 0).length;
   const lowCount = rows.filter(r => r.quantity_available > 0 && r.quantity_available <= r.low_stock_threshold).length;
 
   return (
     <>
-      <PageSeo title="Inventory — Admin" />
+      <PageSeo title={`${ti.title} — ${t.admin.nav.adminBadge}`} />
 
       <div className="admin-page-header">
         <div>
-          <h1 className="admin-page-title">Inventory</h1>
-          <p className="admin-page-desc">{total.toLocaleString()} SKUs tracked</p>
+          <h1 className="admin-page-title">{ti.title}</h1>
+          <p className="admin-page-desc">{total.toLocaleString()} {ti.skusTracked}</p>
         </div>
         <button className="btn btn-ghost btn-sm" onClick={load}>
-          <RefreshCw size={14} /> Refresh
+          <RefreshCw size={14} /> {ti.refresh}
         </button>
       </div>
 
       {/* Quick KPI cards */}
       <div className="kpi-grid" style={{ marginBottom: 'var(--space-5)' }}>
         {[
-          { icon: Package, label: 'Total SKUs', value: total.toLocaleString(), color: 'var(--color-primary)' },
-          { icon: AlertTriangle, label: 'Low Stock', value: String(lowCount), color: 'var(--color-warning)' },
-          { icon: TrendingDown, label: 'Out of Stock', value: String(outCount), color: 'var(--color-danger)' },
+          { icon: Package, label: ti.totalSkus, value: total.toLocaleString(), color: 'var(--color-primary)' },
+          { icon: AlertTriangle, label: ti.lowStock, value: String(lowCount), color: 'var(--color-warning)' },
+          { icon: TrendingDown, label: ti.outOfStock, value: String(outCount), color: 'var(--color-danger)' },
         ].map(({ icon: Icon, label, value, color }) => (
           <div key={label} className="kpi-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
@@ -157,7 +158,7 @@ export default function AdminInventoryPage() {
               <Search size={14} className="input-icon-left" />
               <input
                 type="search" className="input input-sm"
-                placeholder="Search product or SKU…"
+                placeholder={ti.searchPlaceholder}
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }}
                 style={{ paddingLeft: 'var(--space-9)' }}
@@ -171,7 +172,7 @@ export default function AdminInventoryPage() {
                   style={{ fontSize: 'var(--text-xs)', padding: '4px 10px' }}
                   onClick={() => { setStockFilter(f); setPage(1); }}
                 >
-                  {f === 'all' ? 'All' : f === 'low' ? 'Low Stock' : 'Out of Stock'}
+                  {f === 'all' ? ti.filterAll : f === 'low' ? ti.filterLow : ti.filterOut}
                 </button>
               ))}
             </div>
@@ -182,7 +183,7 @@ export default function AdminInventoryPage() {
           <div style={{ padding: 'var(--space-12)' }}><Spinner fullPage /></div>
         ) : rows.length === 0 ? (
           <div style={{ padding: 'var(--space-8)' }}>
-            <EmptyState title="No inventory records" description="Products will appear here once added." />
+            <EmptyState title={ti.noRecords} description={ti.noRecordsDesc} />
           </div>
         ) : (
           <>
@@ -190,12 +191,12 @@ export default function AdminInventoryPage() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Product / SKU</th>
-                    <th>Available</th>
-                    <th>Reserved</th>
-                    <th>Threshold</th>
-                    <th>Status</th>
-                    <th>Restock</th>
+                    <th>{ti.colProductSku}</th>
+                    <th>{ti.colAvailable}</th>
+                    <th>{ti.colReserved}</th>
+                    <th>{ti.colThreshold}</th>
+                    <th>{ti.colStatus}</th>
+                    <th>{ti.colRestock}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -227,7 +228,7 @@ export default function AdminInventoryPage() {
                               type="number"
                               className="input input-sm"
                               style={{ width: 72 }}
-                              placeholder="+qty"
+                              placeholder={ti.qtyPlaceholder}
                               min="1"
                               value={restocking[row.id] ?? ''}
                               onChange={e => setRestocking(prev => ({ ...prev, [row.id]: e.target.value }))}
@@ -237,7 +238,7 @@ export default function AdminInventoryPage() {
                               disabled={savingId === row.id}
                               onClick={() => handleRestock(row)}
                             >
-                              {savingId === row.id ? '…' : 'Add'}
+                              {savingId === row.id ? '…' : ti.addBtn}
                             </button>
                           </div>
                         </td>

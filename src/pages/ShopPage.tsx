@@ -1,325 +1,476 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams, useParams, Link } from 'react-router-dom';
-import { Search, SlidersHorizontal, X, ArrowUpDown } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  SlidersHorizontal, X, Search, ChevronDown, Grid3X3, List,
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { useT } from '@/contexts/LanguageContext';
 import { ProductCard } from '@/components/shared/ProductCard';
 import { Pagination } from '@/components/shared/Pagination';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { Spinner } from '@/components/shared/Spinner';
 import { PageSeo } from '@/components/shared/PageSeo';
-import type { Product } from '@/types';
+import { useT } from '@/contexts/LanguageContext';
+import type { Product, Category } from '@/types';
 
-const PAGE_SIZE = 12;
+type SortOption = 'newest' | 'popular' | 'price_asc' | 'price_desc' | 'rating';
+const ITEMS_PER_PAGE = 12;
+
+async function fetchCategories(): Promise<Category[]> {
+  const { data } = await supabase.from('categories').select('*').eq('is_active', true).order('sort_order');
+  return (data ?? []) as Category[];
+}
 
 export default function ShopPage() {
-  const { t } = useT();
-  const { slug } = useParams<{ slug?: string }>();
+  const { slug: categorySlug } = useParams<{ slug?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const q       = searchParams.get('q') ?? '';
-  const page    = parseInt(searchParams.get('page') ?? '1', 10);
-  const sort    = searchParams.get('sort') ?? 'newest';
-  const minP    = searchParams.get('minPrice') ?? '';
-  const maxP    = searchParams.get('maxPrice') ?? '';
-
-  const [products, setProducts] = useState<Product[]>([]);
-  const [total, setTotal]       = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-  const [search, setSearch]     = useState(q);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const { t } = useT();
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
-
-  const sortOptions = [
+  const SORT_OPTIONS: { value: SortOption; label: string }[] = [
     { value: 'newest',     label: t.shop.newestFirst },
+    { value: 'popular',    label: t.shop.topRated },
     { value: 'price_asc',  label: t.shop.priceAsc },
     { value: 'price_desc', label: t.shop.priceDesc },
-    { value: 'popularity', label: t.shop.topRated },
+    { value: 'rating',     label: t.shop.topRated },
   ];
 
-  const loadProducts = useCallback(async () => {
-    setIsLoading(true);
-    const from = (page - 1) * PAGE_SIZE;
-    const to   = from + PAGE_SIZE - 1;
+  const page = Number(searchParams.get('page') ?? 1);
+  const sort = (searchParams.get('sort') ?? 'newest') as SortOption;
+  const search = searchParams.get('q') ?? '';
+  const minPrice = searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : undefined;
+  const maxPrice = searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : undefined;
+  const inStockOnly = searchParams.get('inStock') === 'true';
+  const featuredOnly = searchParams.get('featured') === 'true' || categorySlug === 'featured';
 
-    let query = supabase
-      .from('products')
-      .select(`
-        id, name, slug, base_price, sale_price, currency, is_active, is_featured, is_archived,
-        images:product_images(id, url, alt_text, is_primary, sort_order),
-        inventory(quantity_available, low_stock_threshold),
-        category:categories(id, name, slug)
-      `, { count: 'exact' })
-      .eq('is_active', true)
-      .eq('is_archived', false)
-      .range(from, to);
+  const [localSearch, setLocalSearch] = useState(search);
 
-    if (q)    query = query.ilike('name', `%${q}%`);
-    if (slug && slug !== 'new-arrivals' && slug !== 'featured' && slug !== 'sale') {
-      query = query.eq('categories.slug', slug);
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+
+  // Prevent background body scroll when mobile filter drawer is open
+  useEffect(() => {
+    if (!showFilters) return;
+    if (window.innerWidth <= 1024) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
     }
-    if (slug === 'featured') query = query.eq('is_featured', true);
-    if (minP) query = query.gte('base_price', parseFloat(minP));
-    if (maxP) query = query.lte('base_price', parseFloat(maxP));
+  }, [showFilters]);
 
-    switch (sort) {
-      case 'price_asc':  query = query.order('base_price', { ascending: true }); break;
-      case 'price_desc': query = query.order('base_price', { ascending: false }); break;
-      default:           query = query.order('created_at', { ascending: false }); break;
-    }
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories,
+  });
 
-    const { data, count } = await query;
-    setProducts((data as unknown as Product[]) ?? []);
-    setTotal(count ?? 0);
-    setIsLoading(false);
-  }, [q, slug, page, sort, minP, maxP]);
+  const activeCategory = categories.find(c => c.slug === categorySlug);
 
-  useEffect(() => { loadProducts(); }, [loadProducts]);
+  const { data, isLoading } = useQuery({
+    queryKey: ['products', { categorySlug, page, sort, search, minPrice, maxPrice, inStockOnly, featuredOnly, categoryId: activeCategory?.id }],
+    queryFn: async () => {
+      let q = supabase
+        .from('products')
+        .select('*, images:product_images(*), category:categories(id,name,slug), brand:brands(id,name,slug), inventory(quantity_available)', { count: 'exact' })
+        .eq('status', 'active');
 
-  const setParam = (key: string, value: string | null) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      if (value) next.set(key, value); else next.delete(key);
-      next.delete('page');
-      return next;
-    });
+      if (activeCategory?.id) q = q.eq('category_id', activeCategory.id);
+      if (categorySlug === 'featured' || featuredOnly) q = q.eq('is_featured', true);
+      if (search) q = q.ilike('name', `%${search}%`);
+      if (minPrice !== undefined) q = q.gte('base_price', minPrice);
+      if (maxPrice !== undefined) q = q.lte('base_price', maxPrice);
+
+      switch (sort) {
+        case 'price_asc':  q = q.order('base_price', { ascending: true }); break;
+        case 'price_desc': q = q.order('base_price', { ascending: false }); break;
+        case 'rating':     q = q.order('average_rating', { ascending: false, nullsFirst: false }); break;
+        case 'popular':    q = q.order('review_count', { ascending: false, nullsFirst: false }); break;
+        default:           q = q.order('created_at', { ascending: false });
+      }
+
+      const from = (page - 1) * ITEMS_PER_PAGE;
+      q = q.range(from, from + ITEMS_PER_PAGE - 1);
+
+      const { data: rows, count } = await q;
+      let products = (rows ?? []) as Product[];
+
+      if (inStockOnly) {
+        products = products.filter(p => {
+          const inv = Array.isArray(p.inventory) ? p.inventory[0] : p.inventory;
+          return !inv || (inv.quantity_available ?? 1) > 0;
+        });
+      }
+
+      return { products, total: count ?? products.length };
+    },
+  });
+
+  const products = data?.products ?? [];
+  const totalCount = data?.total ?? 0;
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+
+  const updateParam = (key: string, value: string | undefined) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set(key, value); else next.delete(key);
+    next.delete('page');
+    setSearchParams(next);
   };
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setParam('q', search || null);
+    updateParam('q', localSearch.trim() || undefined);
   };
 
-  const handleSort = (e: React.ChangeEvent<HTMLSelectElement>) => setParam('sort', e.target.value);
-
-  const getCategoryTitle = (categorySlug: string): string => {
-    switch (categorySlug.toLowerCase()) {
-      case 'new-arrivals':
-        return t.home.catNewArrivals || t.nav.newArrivals;
-      case 'featured':
-        return t.nav.featured;
-      case 'electronics':
-        return t.home.catElectronics;
-      case 'clothing':
-        return t.home.catClothing;
-      case 'home-garden':
-        return t.home.catHomeGarden;
-      case 'sports':
-        return t.home.catSports;
-      case 'beauty':
-        return t.home.catBeauty;
-      case 'books':
-        return t.home.catBooks;
-      case 'toys':
-        return t.home.catToys;
-      case 'sale':
-        return t.home.shopTheSale;
-      default:
-        return categorySlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    }
+  const clearAllFilters = () => {
+    setSearchParams({});
+    setLocalSearch('');
   };
 
-  const pageTitle = slug
-    ? getCategoryTitle(slug)
-    : q ? `${t.shop.search}: "${q}"` : t.shop.allProducts;
+  const hasFilters = !!(search || minPrice || maxPrice || inStockOnly || searchParams.get('featured') === 'true');
+
+  const pageTitle = activeCategory
+    ? activeCategory.name
+    : categorySlug === 'new-arrivals' ? t.nav.newArrivals
+    : categorySlug === 'featured' ? t.home.featuredProducts
+    : search ? `${t.shop.search}: "${search}"`
+    : t.shop.allProducts;
 
   return (
     <>
-      <PageSeo title={`${pageTitle} — ${t.nav.shop}`} description={`Browse ${pageTitle.toLowerCase()} at ${t.siteName}.`} />
+      <PageSeo
+        title={pageTitle}
+        description={activeCategory?.description ?? `Browse our collection of ${pageTitle.toLowerCase()} products.`}
+      />
 
-      {/* Header */}
-      <div className="shop-header">
-        <div className="container">
-          <div className="shop-toolbar">
+      <div className="shop-page">
+        {/* ── Page Header ── */}
+        <div className="shop-header">
+          <div className="container">
+            <h1 className="shop-title">{pageTitle}</h1>
+            {activeCategory?.description && (
+              <p className="shop-subtitle">{activeCategory.description}</p>
+            )}
+          </div>
+        </div>
+
+        {/* ── Toolbar ── */}
+        <div className="shop-toolbar">
+          <div className="container shop-toolbar-inner">
             <div className="shop-toolbar-left">
-              <form onSubmit={handleSearch} className="shop-search-form">
-                <div className="shop-search-input-wrap">
-                  <Search size={16} className="shop-search-icon" />
+              <button
+                type="button"
+                className={`btn btn-secondary btn-sm shop-filter-btn${showFilters ? ' active' : ''}`}
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <SlidersHorizontal size={15} />
+                {t.shop.filters}
+                {hasFilters && <span className="badge badge-primary" style={{ marginLeft: 4 }}>!</span>}
+              </button>
+
+              {/* Inline search */}
+              <form onSubmit={handleSearchSubmit} className="shop-search-form">
+                <div className="input-group">
+                  <Search size={15} className="input-icon-left" />
                   <input
                     type="search"
-                    className="shop-search-input"
+                    value={localSearch}
+                    onChange={e => setLocalSearch(e.target.value)}
                     placeholder={t.shop.searchProducts}
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
+                    className="input shop-search-input"
+                    aria-label={t.shop.searchProducts}
                   />
-                  {search && (
+                  {localSearch && (
                     <button
                       type="button"
-                      className="shop-search-clear"
-                      onClick={() => { setSearch(''); setParam('q', null); }}
-                      aria-label="Clear search"
+                      className="input-icon-right"
+                      onClick={() => { setLocalSearch(''); updateParam('q', undefined); }}
+                      aria-label={t.shop.clearFilters}
                     >
-                      <X size={12} />
+                      <X size={14} />
                     </button>
                   )}
                 </div>
-                <button type="submit" className="btn btn-primary shop-search-btn">
-                  <Search size={14} />
-                  <span>{t.shop.search}</span>
-                </button>
               </form>
-              {!isLoading && (
-                <span className="shop-results-count">{total.toLocaleString()} {t.shop.products}</span>
-              )}
+
+              <p className="shop-results-count">
+                {isLoading ? t.common.loading : `${totalCount} ${t.shop.products}`}
+              </p>
             </div>
+
             <div className="shop-toolbar-right">
-              <button
-                className={`shop-filter-btn${showFilters ? ' active' : ''}`}
-                onClick={() => setShowFilters(p => !p)}
-              >
-                <SlidersHorizontal size={14} />
-                {t.shop.filters}
-              </button>
-              <div className="shop-sort-wrap">
-                <ArrowUpDown size={14} className="shop-sort-icon" />
-                <select className="shop-sort" value={sort} onChange={handleSort} aria-label="Sort by">
-                  {sortOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+              {/* Sort */}
+              <div className="shop-sort">
+                <label htmlFor="sort-select" className="sr-only">{t.shop.filters}</label>
+                <div className="select-wrap">
+                  <select
+                    id="sort-select"
+                    value={sort}
+                    onChange={e => updateParam('sort', e.target.value)}
+                    className="input select shop-sort-select"
+                  >
+                    {SORT_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={15} className="select-icon" />
+                </div>
+              </div>
+
+              {/* View mode */}
+              <div className="shop-view-toggle hide-mobile" role="group" aria-label="View mode">
+                <button
+                  type="button"
+                  className={`btn btn-ghost btn-icon btn-sm${viewMode === 'grid' ? ' active' : ''}`}
+                  onClick={() => setViewMode('grid')}
+                  aria-label="Grid view"
+                >
+                  <Grid3X3 size={16} />
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-ghost btn-icon btn-sm${viewMode === 'list' ? ' active' : ''}`}
+                  onClick={() => setViewMode('list')}
+                  aria-label="List view"
+                >
+                  <List size={16} />
+                </button>
               </div>
             </div>
           </div>
-
-          {/* Breadcrumb */}
-          <nav aria-label="Breadcrumb" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-tertiary)' }}>
-            <Link to="/" style={{ color: 'var(--color-text-tertiary)' }}>{t.common.home}</Link>
-            {' / '}
-            {slug ? (
-              <>
-                <Link to="/shop" style={{ color: 'var(--color-text-tertiary)' }}>{t.nav.shop}</Link>
-                {' / '}<span style={{ color: 'var(--color-text-primary)' }}>{pageTitle}</span>
-              </>
-            ) : (
-              <span style={{ color: 'var(--color-text-primary)' }}>{t.nav.shop}</span>
-            )}
-          </nav>
         </div>
-      </div>
 
-      <div className="container">
-        <div className="shop-layout">
-          {/* Filters Sidebar */}
-          <aside className={`shop-filters-sidebar${showFilters ? ' mobile-open' : ''}`}>
-            {showFilters && (
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => setShowFilters(false)}
-                style={{ marginBottom: 'var(--space-4)' }}
-              >
-                <X size={16} /> {t.nav.close}
-              </button>
-            )}
+        <div className="container shop-layout">
+          {/* ── Mobile Backdrop Overlay ── */}
+          {showFilters && (
+            <div
+              className="shop-filters-backdrop"
+              onClick={() => setShowFilters(false)}
+              aria-hidden="true"
+            />
+          )}
 
+          {/* ── Sidebar Filters ── */}
+          <aside className={`shop-filters-sidebar${showFilters ? ' mobile-open' : ''}`} aria-label={t.shop.filters}>
+            <div
+              className="filter-sidebar-header"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingBottom: 'var(--space-3)',
+                marginBottom: 'var(--space-4)',
+                borderBottom: '1px solid var(--color-border)',
+                position: 'sticky',
+                top: 0,
+                background: '#ffffff',
+                zIndex: 5,
+              }}
+            >
+              <h2 style={{ fontSize: 'var(--text-base)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <SlidersHorizontal size={16} color="var(--color-primary)" />
+                <span>{t.shop.filters}</span>
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {hasFilters && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={clearAllFilters}>
+                    {t.shop.clearFilters}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-icon btn-sm hide-desktop"
+                  onClick={() => setShowFilters(false)}
+                  aria-label={t.nav.close || 'Close filters'}
+                  style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Categories */}
             <div className="filter-section">
-              <p className="filter-title">{t.shop.priceRange}</p>
+              <h3 className="filter-title">{t.shop.category}</h3>
+              <div className="filter-options">
+                <Link
+                  to="/shop"
+                  onClick={() => setShowFilters(false)}
+                  className="checkbox-label"
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: 'var(--radius-md)',
+                    fontWeight: !categorySlug ? 600 : 400,
+                    color: !categorySlug ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                    background: !categorySlug ? 'var(--indigo-50)' : 'transparent',
+                    textDecoration: 'none',
+                  }}
+                >
+                  {t.shop.allProducts}
+                </Link>
+                {categories.map(cat => {
+                  const isActiveCat = categorySlug === cat.slug;
+                  return (
+                    <Link
+                      key={cat.id}
+                      to={`/shop/category/${cat.slug}`}
+                      onClick={() => setShowFilters(false)}
+                      className="checkbox-label"
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: 'var(--radius-md)',
+                        fontWeight: isActiveCat ? 600 : 400,
+                        color: isActiveCat ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                        background: isActiveCat ? 'var(--indigo-50)' : 'transparent',
+                        textDecoration: 'none',
+                      }}
+                    >
+                      {cat.name}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Price Range */}
+            <div className="filter-section">
+              <h3 className="filter-title">{t.shop.priceRange}</h3>
               <div className="filter-price-row">
                 <input
                   type="number"
-                  className="input input-sm"
                   placeholder="Min"
-                  value={minP}
-                  onChange={e => setParam('minPrice', e.target.value || null)}
+                  value={minPrice ?? ''}
+                  onChange={e => updateParam('minPrice', e.target.value || undefined)}
+                  className="input"
                   min={0}
+                  aria-label="Min price"
                 />
-                <span>–</span>
+                <span>—</span>
                 <input
                   type="number"
-                  className="input input-sm"
                   placeholder="Max"
-                  value={maxP}
-                  onChange={e => setParam('maxPrice', e.target.value || null)}
+                  value={maxPrice ?? ''}
+                  onChange={e => updateParam('maxPrice', e.target.value || undefined)}
+                  className="input"
                   min={0}
+                  aria-label="Max price"
                 />
               </div>
             </div>
 
+            {/* Status checkboxes */}
             <div className="filter-section">
-              <p className="filter-title">{t.shop.category}</p>
+              <h3 className="filter-title">{t.shop.inStockOnly}</h3>
               <div className="filter-options">
-                {[
-                  { slug: 'new-arrivals', label: t.home.catNewArrivals },
-                  { slug: 'electronics',  label: t.home.catElectronics },
-                  { slug: 'clothing',     label: t.home.catClothing },
-                  { slug: 'home-garden',  label: t.home.catHomeGarden },
-                  { slug: 'sports',       label: t.home.catSports },
-                  { slug: 'beauty',       label: t.home.catBeauty },
-                  { slug: 'books',        label: t.home.catBooks },
-                  { slug: 'toys',         label: t.home.catToys },
-                ].map(cat => (
-                  <Link
-                    key={cat.slug}
-                    to={`/shop/category/${cat.slug}`}
-                    className={`checkbox-group${slug === cat.slug ? ' active-cat' : ''}`}
-                    style={{
-                      textDecoration: 'none',
-                      color: slug === cat.slug ? 'var(--color-primary)' : 'inherit',
-                      fontWeight: slug === cat.slug ? 'var(--font-semibold)' : 'normal',
-                    }}
-                  >
-                    <span>{cat.label}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            <div className="filter-section">
-              <p className="filter-title">{t.common.status}</p>
-              <div className="filter-options">
-                <label className="checkbox-group">
-                  <input type="checkbox" />
+                <label className="checkbox-label" style={{ cursor: 'pointer', padding: '4px 0' }}>
+                  <input
+                    type="checkbox"
+                    checked={inStockOnly}
+                    onChange={e => updateParam('inStock', e.target.checked ? 'true' : undefined)}
+                  />
                   <span>{t.shop.inStockOnly}</span>
                 </label>
-                <label className="checkbox-group">
-                  <input type="checkbox" />
+                <label className="checkbox-label" style={{ cursor: 'pointer', padding: '4px 0' }}>
+                  <input
+                    type="checkbox"
+                    checked={featuredOnly}
+                    onChange={e => updateParam('featured', e.target.checked ? 'true' : undefined)}
+                  />
                   <span>{t.nav.featured}</span>
                 </label>
               </div>
             </div>
 
-            {(minP || maxP || q) && (
+            {/* Mobile Apply Button */}
+            <div className="hide-desktop" style={{ marginTop: 'var(--space-4)', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--color-border)' }}>
               <button
-                className="btn btn-ghost btn-sm w-full"
-                onClick={() => { setSearchParams(new URLSearchParams()); setSearch(''); }}
+                type="button"
+                className="btn btn-primary w-full"
+                onClick={() => setShowFilters(false)}
               >
-                <X size={14} /> {t.shop.clearFilters}
+                {t.common.confirm} ({totalCount})
               </button>
-            )}
+            </div>
           </aside>
 
-          {/* Products */}
+          {/* ── Main Content ── */}
           <div className="shop-content">
-            <h1 style={{ fontSize: 'var(--text-2xl)', fontFamily: 'var(--font-display)', fontWeight: 'var(--font-extrabold)', marginBottom: 'var(--space-6)' }}>
-              {pageTitle}
-            </h1>
+            {/* Active filter tags */}
+            {hasFilters && (
+              <div className="shop-active-filters">
+                {search && (
+                  <button type="button" className="shop-active-filter" onClick={() => { setLocalSearch(''); updateParam('q', undefined); }}>
+                    {t.shop.search}: "{search}" <X size={12} />
+                  </button>
+                )}
+                {minPrice && (
+                  <button type="button" className="shop-active-filter" onClick={() => updateParam('minPrice', undefined)}>
+                    Min: {minPrice} <X size={12} />
+                  </button>
+                )}
+                {maxPrice && (
+                  <button type="button" className="shop-active-filter" onClick={() => updateParam('maxPrice', undefined)}>
+                    Max: {maxPrice} <X size={12} />
+                  </button>
+                )}
+                {inStockOnly && (
+                  <button type="button" className="shop-active-filter" onClick={() => updateParam('inStock', undefined)}>
+                    {t.shop.inStockOnly} <X size={12} />
+                  </button>
+                )}
+                {searchParams.get('featured') === 'true' && (
+                  <button type="button" className="shop-active-filter" onClick={() => updateParam('featured', undefined)}>
+                    {t.nav.featured} <X size={12} />
+                  </button>
+                )}
+                <button type="button" className="btn btn-ghost btn-sm" onClick={clearAllFilters}>{t.shop.clearFilters}</button>
+              </div>
+            )}
 
+            {/* Grid */}
             {isLoading ? (
-              <Spinner fullPage label={t.common.loading} />
+              <div className="products-grid">
+                {Array.from({ length: ITEMS_PER_PAGE }, (_, i) => (
+                  <div key={i} className="product-card">
+                    <div className="skeleton" style={{ aspectRatio: '1', borderRadius: 'var(--radius-xl)' }} />
+                    <div style={{ padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div className="skeleton" style={{ height: 14, width: '50%' }} />
+                      <div className="skeleton" style={{ height: 18, width: '80%' }} />
+                      <div className="skeleton" style={{ height: 22, width: '40%' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : products.length === 0 ? (
               <EmptyState
+                icon={Search}
                 title={t.shop.noProducts}
-                description={t.shop.noProductsDesc}
+                description={hasFilters ? t.shop.noProductsDesc : t.shop.noProductsDesc}
                 action={
-                  <Link to="/shop" className="btn btn-primary">
-                    {t.shop.browseAll}
-                  </Link>
+                  hasFilters ? (
+                    <button type="button" className="btn btn-primary" onClick={clearAllFilters}>
+                      {t.shop.clearFilters}
+                    </button>
+                  ) : undefined
                 }
               />
             ) : (
               <>
-                <div className="grid-products">
-                  {products.map(product => (
-                    <ProductCard key={product.id} product={product} />
+                <div className={viewMode === 'grid' ? 'products-grid' : 'products-list'}>
+                  {products.map(p => (
+                    <ProductCard key={p.id} product={p} />
                   ))}
                 </div>
-                <Pagination
-                  page={page}
-                  totalPages={totalPages}
-                  onPageChange={p => setSearchParams(prev => {
-                    const next = new URLSearchParams(prev);
-                    next.set('page', String(p));
-                    return next;
-                  })}
-                />
+                {totalPages > 1 && (
+                  <div style={{ marginTop: 'var(--space-10)' }}>
+                    <Pagination
+                      page={page}
+                      totalPages={totalPages}
+                      onPageChange={p => updateParam('page', String(p))}
+                    />
+                  </div>
+                )}
               </>
             )}
           </div>

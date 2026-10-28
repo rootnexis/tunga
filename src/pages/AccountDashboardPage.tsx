@@ -46,17 +46,26 @@ export default function AccountDashboardPage() {
     <>
       <PageSeo title={`${dp.welcomeBack} — ${t.siteName}`} />
       <div className="account-card" style={{ marginBottom: 'var(--space-6)' }}>
-        <div className="account-card-body" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, var(--indigo-600), var(--violet-600))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 'var(--text-xl)', fontWeight: 'var(--font-bold)', flexShrink: 0 }}>
-            {(profile?.first_name?.[0] ?? 'U').toUpperCase()}
+        <div className="account-card-body" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, var(--indigo-600), var(--violet-600))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 'var(--text-xl)', fontWeight: 'var(--font-bold)', flexShrink: 0 }}>
+              {(profile?.first_name?.[0] ?? 'U').toUpperCase()}
+            </div>
+            <div>
+              <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--font-bold)' }}>
+                {dp.welcomeBack}, {displayName}!
+              </h1>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span>{user?.email}</span>
+                <span aria-hidden="true">·</span>
+                <span style={{ color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 600, fontSize: '0.76rem' }}>
+                  ✓ Verified Account
+                </span>
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--font-bold)' }}>
-              {dp.welcomeBack}, {displayName}!
-            </h1>
-            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-              {dp.welcomeDesc}
-            </p>
+          <div style={{ fontSize: '0.74rem', color: 'var(--slate-500)', background: 'var(--slate-50)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--slate-200)' }}>
+            <span>Member ID: <code style={{ fontFamily: 'monospace', color: 'var(--slate-700)' }}>{user?.id?.slice(0, 16)}…</code></span>
           </div>
         </div>
       </div>

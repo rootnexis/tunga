@@ -62,7 +62,9 @@ const NotFoundPage            = safeLazy(() => import('@/pages/NotFoundPage'));
 const LoginPage               = safeLazy(() => import('@/pages/LoginPage'));
 const RegisterPage            = safeLazy(() => import('@/pages/RegisterPage'));
 const ForgotPasswordPage      = safeLazy(() => import('@/pages/ForgotPasswordPage'));
+const ResetPasswordPage       = safeLazy(() => import('@/pages/ResetPasswordPage'));
 const VerifyEmailPage         = safeLazy(() => import('@/pages/VerifyEmailPage'));
+const AuthCallbackPage        = safeLazy(() => import('@/pages/AuthCallbackPage'));
 
 const AccountDashboardPage    = safeLazy(() => import('@/pages/AccountDashboardPage'));
 const AccountOrdersPage       = safeLazy(() => import('@/pages/AccountOrdersPage'));
@@ -174,7 +176,9 @@ const router = createBrowserRouter([
       { path: 'auth/login',           errorElement: <RouteErrorBoundary />, element: <Suspense fallback={<PageLoader />}><LoginPage /></Suspense> },
       { path: 'auth/register',        errorElement: <RouteErrorBoundary />, element: <Suspense fallback={<PageLoader />}><RegisterPage /></Suspense> },
       { path: 'auth/forgot-password', errorElement: <RouteErrorBoundary />, element: <Suspense fallback={<PageLoader />}><ForgotPasswordPage /></Suspense> },
+      { path: 'auth/reset-password',  errorElement: <RouteErrorBoundary />, element: <Suspense fallback={<PageLoader />}><ResetPasswordPage /></Suspense> },
       { path: 'auth/verify-email',    errorElement: <RouteErrorBoundary />, element: <Suspense fallback={<PageLoader />}><VerifyEmailPage /></Suspense> },
+      { path: 'auth/callback',        errorElement: <RouteErrorBoundary />, element: <Suspense fallback={<PageLoader />}><AuthCallbackPage /></Suspense> },
 
       // ── Admin ───────────────────────────────────────────────────────
       {

@@ -2755,7 +2755,67 @@
   font-size: 0.75rem;
   color: var(--slate-400);
   font-weight: 500;
-  text-transform: capitalize;
+/* Notion/Linear Segmented Tab Switcher */
+.auth-segmented-switch {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 3px;
+  margin-bottom: 14px;
+  border: 1px solid #e2e8f0;
+}
+.auth-segmented-tab {
+  flex: 1;
+  text-align: center;
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--slate-600);
+  border-radius: 9px;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.auth-segmented-tab.active {
+  background: #ffffff;
+  color: var(--slate-900);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.auth-segmented-tab:hover:not(.active) {
+  color: var(--slate-900);
+}
+
+/* Linear-style In-Card Alert Callout */
+.auth-alert-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  color: #b91c1c;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  margin-bottom: 12px;
+  animation: fadeIn 0.2s ease;
+}
+
+/* Google Button Badge */
+.google-btn-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #1a73e8;
+  background: #e8f0fe;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  margin-left: auto;
 }
 
 /* Google Auth Button */

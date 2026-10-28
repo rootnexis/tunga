@@ -69,6 +69,7 @@ const STORAGE_KEYS = {
   ADDRESSES: 'ituza_mock_addresses',
   REVIEWS: 'ituza_mock_reviews',
   USER: 'ituza_mock_user',
+  USERS_DB: 'ituza_mock_users_db',
   WISHLIST: 'ituza_mock_wishlist',
   PRODUCTS: 'ituza_mock_products',
   CATEGORIES: 'ituza_mock_categories',
@@ -641,11 +642,26 @@ const mockAuth = {
     };
   },
 
-  async signInWithPassword({ email }: { email: string; password?: string }) {
-    if (email.toLowerCase().includes('admin')) {
+  async signInWithPassword({ email, password }: { email: string; password?: string }) {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const usersDb = getStored<any[]>(STORAGE_KEYS.USERS_DB, []);
+    const foundUser = usersDb.find((u) => u.email.toLowerCase() === cleanEmail);
+
+    if (usersDb.length > 0 && !foundUser && !cleanEmail.includes('admin') && !cleanEmail.includes('demo') && cleanEmail !== 'rootnexis@gmail.com') {
+      return { data: { user: null, session: null }, error: { message: 'Invalid credentials. No account found with this email.' } };
+    }
+
+    if (foundUser && password && foundUser.password !== 'default_hashed_pw' && foundUser.password !== password) {
+      return { data: { user: null, session: null }, error: { message: 'Invalid login credentials. Please check your password.' } };
+    }
+
+    if (cleanEmail.includes('admin')) {
       localStorage.setItem('ituza_admin_mode', 'true');
     }
-    const user = createMockUser(email);
+
+    const firstName = foundUser?.firstName || (cleanEmail.includes('admin') ? 'Admin' : 'Customer');
+    const lastName = foundUser?.lastName || 'User';
+    const user = createMockUser(cleanEmail, firstName, lastName);
     setStored(STORAGE_KEYS.USER, user);
     const session = getStoredSession();
     authListeners.forEach((cb) => cb('SIGNED_IN', session));
@@ -701,13 +717,36 @@ const mockAuth = {
     });
   },
 
-  async signUp({ email, options }: { email: string; password?: string; options?: any }) {
-    const firstName = options?.data?.first_name || 'New';
+  async signUp({ email, password, options }: { email: string; password?: string; options?: any }) {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const usersDb = getStored<any[]>(STORAGE_KEYS.USERS_DB, []);
+    const existing = usersDb.find((u) => u.email.toLowerCase() === cleanEmail);
+
+    if (existing) {
+      return {
+        data: { user: null, session: null },
+        error: { message: 'An account with this email already exists. Please sign in instead.' },
+      };
+    }
+
+    const firstName = options?.data?.first_name || 'Customer';
     const lastName = options?.data?.last_name || 'Member';
-    if (email.toLowerCase().includes('admin') || options?.data?.role === 'admin') {
+    const isAdmin = cleanEmail.includes('admin') || options?.data?.role === 'admin';
+    if (isAdmin) {
       localStorage.setItem('ituza_admin_mode', 'true');
     }
-    const user = createMockUser(email, firstName, lastName);
+
+    const user = createMockUser(cleanEmail, firstName, lastName);
+    const userRecord = {
+      id: user.id,
+      email: cleanEmail,
+      firstName,
+      lastName,
+      password: password || 'default_hashed_pw',
+      createdAt: new Date().toISOString(),
+    };
+
+    setStored(STORAGE_KEYS.USERS_DB, [...usersDb, userRecord]);
     setStored(STORAGE_KEYS.USER, user);
     const session = getStoredSession();
     authListeners.forEach((cb) => cb('SIGNED_IN', session));
@@ -721,13 +760,24 @@ const mockAuth = {
     return { error: null };
   },
 
-  async resetPasswordForEmail(_email: string, _opts?: any) {
+  async resetPasswordForEmail(email: string, _opts?: any) {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    localStorage.setItem('ituza_last_password_reset_email', cleanEmail);
     return { data: {}, error: null };
   },
 
   async updateUser(attributes: any) {
     const user = getStored<any>(STORAGE_KEYS.USER, null);
     if (!user) return { data: { user: null }, error: { message: 'Not authenticated' } };
+
+    if (attributes.password) {
+      const usersDb = getStored<any[]>(STORAGE_KEYS.USERS_DB, []);
+      const updatedDb = usersDb.map((u) =>
+        u.email.toLowerCase() === user.email.toLowerCase() ? { ...u, password: attributes.password } : u
+      );
+      setStored(STORAGE_KEYS.USERS_DB, updatedDb);
+    }
+
     const updated = {
       ...user,
       ...attributes,

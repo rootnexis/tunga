@@ -1,10 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import type { ProductSummary, OrderSummary, ChatMessage } from '@/types/chat';
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-const GEMINI_MODEL = 'gemini-1.5-flash';
-
-// Exact curated products currently available in the Ituze store catalog
+// Curated products currently available in the Ituze store catalog
 export const FALLBACK_POPULAR_PRODUCTS: ProductSummary[] = [
   {
     id: 'p0000000-0000-0000-0000-000000000001',
@@ -80,7 +77,6 @@ export const FALLBACK_POPULAR_PRODUCTS: ProductSummary[] = [
   },
 ];
 
-// In-memory caching for instant fast responses
 let cachedProducts: ProductSummary[] | null = null;
 let lastProductFetch = 0;
 
@@ -168,7 +164,7 @@ export async function fetchUserOrders(userId?: string): Promise<OrderSummary[]> 
 
 export async function findOrderByNumber(orderNum: string): Promise<OrderSummary | null> {
   try {
-    const cleanNum = orderNum.trim().toUpperCase();
+    const cleanNum = orderNum.trim().toUpperCase().replace(/^#/, '');
     const { data, error } = await supabase
       .from('orders')
       .select(`
@@ -203,36 +199,143 @@ export interface AssistantResponse {
 }
 
 /**
- * Checks whether user message explicitly inquires about products or items to buy.
+ * Strictly checks whether the user is explicitly asking to see, buy, or get recommendations for products.
+ * Simple greetings ("hey", "hello") or general questions will return false so products are NOT shown.
  */
-function isExplicitProductInquiry(query: string): boolean {
-  const q = query.toLowerCase();
+export function isExplicitProductInquiry(query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return false;
+
+  // Never show products on pure greetings or small talk
+  if (
+    /^(hey+|hi+|hello+|hola|yo|sup|good\s*(morning|afternoon|evening|day)|bonjour|salut|muraho|mwiriwe|mwaramutse|habari|hujambo|mambo|sasa|how\s+are\s+you|how's\s+it\s+going|thanks?|thank\s+you|merci|murakoze|asante|ok|okay|cool|great|nice)[!.?\s]*$/i.test(
+      q
+    )
+  ) {
+    return false;
+  }
+
   return (
-    q.includes('show product') ||
+    q.includes('product') ||
+    q.includes('popular') ||
     q.includes('recommend') ||
     q.includes('show me') ||
     q.includes('what do you sell') ||
-    q.includes('products you have') ||
+    q.includes('what do you have') ||
     q.includes('catalog') ||
     q.includes('looking for') ||
     q.includes('want to buy') ||
+    q.includes('buy ') ||
+    q.includes('price of') ||
     q.includes('headphone') ||
     q.includes('earbud') ||
+    q.includes('smartwatch') ||
     q.includes('watch') ||
     q.includes('chrono') ||
     q.includes('light bar') ||
     q.includes('power bank') ||
     q.includes('charger') ||
     q.includes('speaker') ||
+    q.includes('produit') ||
+    q.includes('populaire') ||
     q.includes('ibicuruzwa') ||
-    q.includes('reba ibicuruzwa') ||
-    q.includes('bidhaa')
+    q.includes('ibikunzwe') ||
+    q.includes('bidhaa') ||
+    q.includes('maarufu')
   );
 }
 
 /**
- * Intelligent high-speed knowledge engine covering ALL e-commerce questions for Ituze.
- * Direct answers to questions asked, without unsolicited product attachments.
+ * Matching helper that selects relevant products when a user explicitly asks for them.
+ */
+function selectMatchingProducts(query: string, replyText: string, products: ProductSummary[]): ProductSummary[] {
+  const combined = (query + ' ' + replyText).toLowerCase();
+  const matched: ProductSummary[] = [];
+
+  const isAudioQuery =
+    combined.includes('audio') ||
+    combined.includes('headphone') ||
+    combined.includes('earbud') ||
+    combined.includes('sound') ||
+    combined.includes('casque') ||
+    combined.includes('ecouteur');
+  const isWatchQuery =
+    combined.includes('watch') ||
+    combined.includes('montre') ||
+    combined.includes('chrono') ||
+    combined.includes('wearable') ||
+    combined.includes('isaha');
+  const isLightQuery =
+    combined.includes('light') ||
+    combined.includes('lumina') ||
+    combined.includes('lamp') ||
+    combined.includes('itara');
+  const isPowerQuery =
+    combined.includes('power bank') ||
+    combined.includes('charger') ||
+    combined.includes('charge') ||
+    combined.includes('battery') ||
+    combined.includes('station');
+
+  if (isAudioQuery) {
+    matched.push(
+      ...products.filter(
+        (p) =>
+          p.category?.toLowerCase().includes('audio') ||
+          p.name.toLowerCase().includes('headphones') ||
+          p.name.toLowerCase().includes('pods')
+      )
+    );
+  }
+  if (isWatchQuery) {
+    matched.push(
+      ...products.filter(
+        (p) => p.category?.toLowerCase().includes('wearable') || p.name.toLowerCase().includes('watch')
+      )
+    );
+  }
+  if (isLightQuery) {
+    matched.push(
+      ...products.filter(
+        (p) => p.category?.toLowerCase().includes('smart home') || p.name.toLowerCase().includes('light')
+      )
+    );
+  }
+  if (isPowerQuery) {
+    matched.push(
+      ...products.filter(
+        (p) =>
+          p.category?.toLowerCase().includes('accessories') ||
+          p.name.toLowerCase().includes('power') ||
+          p.name.toLowerCase().includes('charge')
+      )
+    );
+  }
+
+  for (const p of products) {
+    if (combined.includes(p.name.toLowerCase()) || combined.includes(p.slug.toLowerCase())) {
+      if (!matched.find((item) => item.id === p.id)) {
+        matched.push(p);
+      }
+    }
+  }
+
+  if (matched.length === 0) {
+    return products.slice(0, 3);
+  }
+
+  // Deduplicate and return top 3
+  const unique: ProductSummary[] = [];
+  for (const item of matched) {
+    if (!unique.find((u) => u.id === item.id)) {
+      unique.push(item);
+    }
+  }
+  return unique.slice(0, 3);
+}
+
+/**
+ * Intelligent conversational engine covering casual greetings, order tracking, store policies, and product queries.
  */
 function generateIntelligentItuzeResponse(
   query: string,
@@ -243,36 +346,130 @@ function generateIntelligentItuzeResponse(
   lang = 'en',
   specificOrder?: OrderSummary | null
 ): AssistantResponse {
-  const q = query.toLowerCase();
+  const q = query.trim().toLowerCase();
   const matchedOrders: OrderSummary[] = [];
+  const nameSuffix = userName ? ` ${userName}` : '';
 
-  const customerName = userName || (lang === 'fr' ? 'Cher client' : lang === 'rw' ? 'Mukunzi' : lang === 'sw' ? 'Mteja' : 'Valued Customer');
+  // 1. PURE GREETINGS & SMALL TALK — Reply with simple, natural words and NO products or heavy lists
+  const isSimpleGreeting =
+    /^(hey+|hi+|hello+|hola|yo|good\s*(morning|afternoon|evening|day)|bonjour|salut|coucou|muraho|mwiriwe|mwaramutse|bite|habari|hujambo|mambo|sasa)[!.?\s]*$/i.test(
+      q
+    );
 
-  // 1. SPECIFIC ORDER QUERY OR GENERAL ORDER TRACKING
+  if (isSimpleGreeting) {
+    if (lang === 'fr') {
+      return { content: `Bonjour${nameSuffix} ! Comment puis-je vous aider aujourd'hui ?` };
+    }
+    if (lang === 'rw') {
+      return { content: `Muraho${nameSuffix} ! Nagufasha iki uyu munsi ?` };
+    }
+    if (lang === 'sw') {
+      return { content: `Habari${nameSuffix}! Nawezaje kukusaidia leo?` };
+    }
+    return { content: `Hey${nameSuffix}! Welcome to Ituze. How can I help you today?` };
+  }
+
+  const isHowAreYou =
+    q.includes('how are you') ||
+    q.includes("how's it going") ||
+    q.includes('how are things') ||
+    q.includes('comment ça va') ||
+    q.includes('comment vas-tu') ||
+    q.includes('amakuru') ||
+    q.includes('umeamkaje') ||
+    q.includes('habari gani');
+
+  if (isHowAreYou && !isExplicitProductInquiry(q)) {
+    if (lang === 'fr') {
+      return { content: `Je vais très bien, merci ! Comment puis-je vous aider aujourd'hui ?` };
+    }
+    if (lang === 'rw') {
+      return { content: `Meze neza cyane, urakoze kubaza! Nagufasha iki uyu munsi?` };
+    }
+    if (lang === 'sw') {
+      return { content: `Niko salama kabisa, asante kwa kuuliza! Nawezaje kukusaidia leo?` };
+    }
+    return { content: `I'm doing great, thank you for asking! How can I help you today?` };
+  }
+
+  const isThanksOrAck =
+    /^(thanks?|thank\s+you(\s+so\s+much|\s+very\s+much)?|thx|ty|merci(\s+beaucoup)?|murakoze(\s+cyane)?|urakoze|asante(\s+sana)?|ok|okay|got\s+it|alright|awesome|great|nice|bye|goodbye)[!.?\s]*$/i.test(
+      q
+    );
+
+  if (isThanksOrAck) {
+    if (lang === 'fr') {
+      return { content: `Avec plaisir ! N'hésitez pas si vous avez besoin d'autre chose.` };
+    }
+    if (lang === 'rw') {
+      return { content: `Murakoze cyane! Niba hari ikindi ukeneye, mbwira ngufashe.` };
+    }
+    if (lang === 'sw') {
+      return { content: `Karibu sana! Usisite kuniuliza kama unahitaji msaada mwingine.` };
+    }
+    return { content: `You're very welcome! Let me know if there's anything else I can help you with.` };
+  }
+
+  const isIdentityQuestion =
+    q.includes('who are you') ||
+    q.includes('what are you') ||
+    q.includes('what can you do') ||
+    q.includes('qui es-tu') ||
+    q.includes('uri nde') ||
+    q.includes('wewe ni nani');
+
+  if (isIdentityQuestion) {
+    if (lang === 'fr') {
+      return {
+        content: `Je suis **Ituze AI**, votre assistant personnel sur Ituze. Je peux vous aider à suivre vos commandes, répondre à vos questions sur la livraison ou vous recommander des produits si vous le souhaitez.`,
+      };
+    }
+    if (lang === 'rw') {
+      return {
+        content: `Ndi **Ituze AI**, umufasha wawe kuri Ituze. Nshobora kugufasha gukurikirana komande zawe, gusubiza ibibazo byo kugeza ibicuruzwa, cyangwa kukwereka ibicuruzwa igihe ubisabye.`,
+      };
+    }
+    if (lang === 'sw') {
+      return {
+        content: `Mimi ni **Ituze AI**, msaidizi wako kwenye Ituze. Ninaweza kukusaidia kufuatilia maagizo yako, kujibu maswali ya usafirishaji, au kukuonyesha bidhaa ukiomba.`,
+      };
+    }
+    return {
+      content: `I'm **Ituze AI**, your virtual shopping assistant for Ituze. I can help you track orders, answer questions about shipping and returns, or show you products whenever you ask.`,
+    };
+  }
+
+  // 2. SPECIFIC ORDER LOOKUP (e.g. ORD-2026-8912)
   if (specificOrder) {
     matchedOrders.push(specificOrder);
     let text = '';
     if (lang === 'fr') {
-      text = `J'ai retrouvé votre commande **#${specificOrder.order_number}** !\n\n- **Statut actuel :** ${specificOrder.status.toUpperCase()}\n- **Montant total :** $${specificOrder.total} ${specificOrder.currency}\n- **Articles :** ${specificOrder.items_summary?.join(', ') || 'Articles Ituze'}\n- **Date :** ${new Date(specificOrder.created_at).toLocaleDateString()}\n\nVous pouvez cliquer sur la carte ci-dessous pour suivre votre colis en temps réel.`;
+      text = `J'ai trouvé votre commande **#${specificOrder.order_number}** (${specificOrder.status.toUpperCase()}) d'un montant de **$${specificOrder.total} ${specificOrder.currency}**. Cliquez sur la carte ci-dessous pour voir le suivi détaillé.`;
     } else if (lang === 'rw') {
-      text = `Nabonye komande yawe **#${specificOrder.order_number}** !\n\n- **Imiterere :** ${specificOrder.status.toUpperCase()}\n- **Amafaranga yose :** $${specificOrder.total} ${specificOrder.currency}\n- **Ibicuruzwa :** ${specificOrder.items_summary?.join(', ') || 'Ibicuruzwa bya Ituze'}\n- **Itariki :** ${new Date(specificOrder.created_at).toLocaleDateString()}\n\nKanda ku ikarita iri munsi kugira ngo ukurikirane komande yawe.`;
+      text = `Nabonye komande yawe **#${specificOrder.order_number}** (${specificOrder.status.toUpperCase()}) ihwanye na **$${specificOrder.total} ${specificOrder.currency}**. Kanda ku ikarita iri munsi urebe aho igeze.`;
     } else if (lang === 'sw') {
-      text = `Nimepata agizo lako **#${specificOrder.order_number}** !\n\n- **Hali ya sasa :** ${specificOrder.status.toUpperCase()}\n- **Jumla ya gharama :** $${specificOrder.total} ${specificOrder.currency}\n- **Vitu :** ${specificOrder.items_summary?.join(', ') || 'Bidhaa za Ituze'}\n- **Tarehe :** ${new Date(specificOrder.created_at).toLocaleDateString()}\n\nBofya kadi hapa chini kufuatilia kifurushi chako.`;
+      text = `Nimepata agizo lako **#${specificOrder.order_number}** (${specificOrder.status.toUpperCase()}) lenye jumla ya **$${specificOrder.total} ${specificOrder.currency}**. Bofya kadi hapa chini kufuatilia.`;
     } else {
-      text = `Found your order **#${specificOrder.order_number}**!\n\n- **Current Status:** ${specificOrder.status.toUpperCase()}\n- **Order Total:** $${specificOrder.total} ${specificOrder.currency}\n- **Items:** ${specificOrder.items_summary?.join(', ') || 'Ituze items'}\n- **Placed On:** ${new Date(specificOrder.created_at).toLocaleDateString()}\n\nTap the order card below to view live tracking details or download invoice.`;
+      text = `Here is your order **#${specificOrder.order_number}** — currently **${specificOrder.status.toUpperCase()}** ($${specificOrder.total} ${specificOrder.currency}). Click the order card below to view full step-by-step tracking.`;
     }
     return { content: text, matchedOrders };
   }
 
-  // 2. ORDER / TRACKING INTENT
+  // 3. ORDER / TRACKING INTENT
   const isOrderIntent =
     q.includes('order') ||
     q.includes('track') ||
+    q.includes('package') ||
+    q.includes('shipment') ||
+    q.includes('where is my') ||
     q.includes('commande') ||
     q.includes('suivi') ||
+    q.includes('colis') ||
     q.includes('agizo') ||
+    q.includes('maagizo') ||
     q.includes('fuatilia') ||
     q.includes('komande') ||
+    q.includes('ibyatumijwe') ||
     q.includes('status');
 
   if (isOrderIntent) {
@@ -280,123 +477,150 @@ function generateIntelligentItuzeResponse(
       matchedOrders.push(...orders.slice(0, 3));
       let text = '';
       if (lang === 'fr') {
-        text = `Bonjour **${customerName}**, voici le récapitulatif de vos commandes récentes sur Ituze :\n\n- **Suivi en direct :** Cliquez sur une commande pour afficher les détails d'expédition.\n- **Délais de livraison :** Les colis standard arrivent sous 3 à 5 jours ouvrés.\n- **Besoin d'aide ?** Vous pouvez également m'indiquer votre numéro de commande (ex: ORD-2026-XXXX).`;
+        text = `Voici vos commandes récentes. Cliquez sur une commande ci-dessous pour suivre son statut en direct ou allez dans votre [Tableau de bord](/account) :`;
       } else if (lang === 'rw') {
-        text = `Muraho **${customerName}**, dore ibyo uherutse gutumiza kuri Ituze :\n\n- **Gukurikirana :** Kanda kuri komande wifuza kureba uko ihagaze.\n- **Igihe cyo kugezwaho :** Bitwara iminsi 3 kugeza kuri 5 y'akazi.\n- **Ubufasha :** Ushobora no kunyandikira numero ya komande yawe (urugero: ORD-2026-XXXX).`;
+        text = `Dore komande zawe ziheruka. Kanda kuri komande iri munsi kugira ngo ukurikirane aho igeze cyangwa ujye muri [Konti yawe](/account) :`;
       } else if (lang === 'sw') {
-        text = `Habari **${customerName}**, hapa kuna maagizo yako ya hivi karibuni kwenye Ituze :\n\n- **Ufuatiliaji :** Bofya agizo kuangalia maelezo ya usafirishaji.\n- **Muda wa kuwasili :** Siku 3 hadi 5 za kazi kwa usafirishaji wa kawaida.\n- **Msaada :** Unaweza pia kunitumia nambari ya agizo lako (mfano: ORD-2026-XXXX).`;
+        text = `Hapa kuna maagizo yako ya hivi karibuni. Bofya agizo hapa chini kufuatilia au tembelea [Dashibodi yako](/account) :`;
       } else {
-        text = `Hello **${customerName}**, here are your recent orders placed on Ituze:\n\n- **Live Tracking:** Tap any order card below to see detailed delivery progress.\n- **Delivery Timing:** Standard shipments arrive within 3–5 business days.\n- **Direct Lookup:** You can also type any specific order number (e.g., ORD-2026-XXXX).`;
+        text = `Here are your recent orders. Tap any order card below to track its live delivery progress, or visit your [Account Dashboard](/account):`;
       }
       return { content: text, matchedOrders };
     } else if (userId) {
-      let text = '';
-      if (lang === 'fr') {
-        text = `Vous n'avez pas encore passé de commande sur Ituze. Vos achats apparaîtront automatiquement ici dès votre première commande.`;
-      } else if (lang === 'rw') {
-        text = `Nta komande urakora kuri Ituze. Ibyo uzagura byose bizahita bigaragara hano.`;
-      } else if (lang === 'sw') {
-        text = `Bado haujaweka agizo lolote kwenye Ituze. Maagizo yako yataonekana hapa pindi unapofanya ununuzi.`;
-      } else {
-        text = `You don't have any active orders right now. Once you place an order, live tracking and receipts will appear right here.`;
-      }
-      return { content: text };
+      return {
+        content:
+          lang === 'fr'
+            ? `Vous n'avez pas encore de commande active. Vous pouvez aussi rechercher un numéro de commande (ex: ORD-2026-8912) directement depuis votre [Tableau de bord](/account).`
+            : lang === 'rw'
+            ? `Nta komande urakora. Ushobora no gushakisha numero ya komande (urugero: ORD-2026-8912) muri [Konti yawe](/account).`
+            : lang === 'sw'
+            ? `Bado huna agizo lolote. Unaweza pia kutafuta nambari ya agizo (mfano: ORD-2026-8912) kwenye [Dashibodi yako](/account).`
+            : `You don't have any orders under your account yet. You can also enter an order number (such as **ORD-2026-8912**) right here or in your [Account Dashboard](/account) to track it.`,
+      };
     } else {
-      let text = '';
-      if (lang === 'fr') {
-        text = `Pour consulter vos commandes, veuillez vous [connecter à votre compte](/auth/login) ou me fournir directement votre référence de commande (ex: **ORD-2026-XXXX**).\n\n- **Connexion rapide :** Vos commandes sont enregistrées dans votre espace client.\n- **Recherche immédiate :** Entrez votre référence pour un statut instantané.`;
-      } else if (lang === 'rw') {
-        text = `Kugira ngo urebe ibyo watumije, nyamuneka [injira kuri konti yawe](/auth/login) cyangwa unyandikire numero ya komande yawe (urugero: **ORD-2026-XXXX**).\n\n- **Kwinjira :** Komande zawe zose zibitse muri konti yawe.\n- **Gushakisha :** Andika numero ya komande ngufashe aka kanya.`;
-      } else if (lang === 'sw') {
-        text = `Kuangalia maagizo yako, tafadhali [ingia kwenye akaunti yako](/auth/login) au weka nambari ya agizo lako hapa (mfano: **ORD-2026-XXXX**).\n\n- **Ingia :** Maagizo yote yamehifadhiwa kwenye akaunti yako.\n- **Tafuta :** Weka nambari ya agizo upate maelezo ya haraka.`;
-      } else {
-        text = `To view your orders, please [sign in to your account](/auth/login) or type your Order Number (e.g. **ORD-2026-XXXX**).\n\n- **Account Orders:** Sign in to see past history, receipts, and order statuses.\n- **Guest Lookup:** Type your order number anytime for instant tracking!`;
-      }
-      return { content: text };
+      return {
+        content:
+          lang === 'fr'
+            ? `Pour suivre vos commandes, veuillez vous [connecter à votre compte](/auth/login) ou m'indiquer votre numéro de commande (ex: **ORD-2026-8912**).`
+            : lang === 'rw'
+            ? `Kugira ngo ukurikirane komande zawe, [injira kuri konti yawe](/auth/login) cyangwa wandike numero ya komande yawe hano (urugero: **ORD-2026-8912**).`
+            : lang === 'sw'
+            ? `Kufuatilia maagizo yako, tafadhali [ingia kwenye akaunti yako](/auth/login) au andika nambari ya agizo lako hapa (mfano: **ORD-2026-8912**).`
+            : `To track your orders, please [sign in to your account](/auth/login) or type your order number here (for example: **ORD-2026-8912**).`,
+      };
     }
   }
 
-  // 3. SHIPPING & DELIVERY INTENT
-  const isShippingIntent =
+  // 4. EXPLICIT PRODUCT INQUIRY — Only show product cards when the user asks for products
+  if (isExplicitProductInquiry(q)) {
+    const finalProducts = selectMatchingProducts(q, '', products);
+    let text = '';
+    if (lang === 'fr') {
+      text = `Voici les produits correspondants dans notre catalogue Ituze. Cliquez sur un article pour voir les détails :`;
+    } else if (lang === 'rw') {
+      text = `Dore ibicuruzwa bihari muri Ituze bihuye n'ibyo ushaka. Kanda ku gicuruzwa urebe ibirambuye :`;
+    } else if (lang === 'sw') {
+      text = `Hapa kuna bidhaa zinazopatikana kwenye Ituze. Bofya bidhaa yoyote kuona maelezo zaidi :`;
+    } else {
+      text = `Here are the matching products from our Ituze collection. Tap any item below to view full details:`;
+    }
+    return { content: text, matchedProducts: finalProducts };
+  }
+
+  // 5. SHIPPING & DELIVERY INTENT
+  if (
     q.includes('ship') ||
     q.includes('deliver') ||
     q.includes('livr') ||
     q.includes('kugeza') ||
-    q.includes('posita') ||
     q.includes('usafirishaji') ||
-    q.includes('transport') ||
-    q.includes('how long');
-
-  if (isShippingIntent) {
-    let text = '';
+    q.includes('how long')
+  ) {
     if (lang === 'fr') {
-      text = `Voici la politique de livraison officielle de **Ituze** :\n\n- **Livraison Gratuite :** Offerte pour toute commande supérieure à **$50 USD**.\n- **Livraison Standard :** 3 à 5 jours ouvrés ($4.99 USD).\n- **Livraison Express :** 1 à 2 jours ouvrés ($12.99 USD).\n- **Suivi des colis :** Numéro de suivi fourni dès l'expédition avec notifications SMS/Email.\n- **Couverture :** Expédition rapide et sécurisée.`;
-    } else if (lang === 'rw') {
-      text = `Dore amabwiriza yo kugeza ibicuruzwa ku bakiriya kuri **Ituze** :\n\n- **Kugezwaho ku buntu :** Kuri buri komande irengeje **$50 USD**.\n- **Uburyo busanzwe (Standard) :** Iminsi 3 kugeza kuri 5 y'akazi ($4.99 USD).\n- **Uburyo bwihuse (Express) :** Umunsi 1 kugeza kuri 2 y'akazi ($12.99 USD).\n- **Gukurikirana :** Uhita uhabwa uburyo bwo gukurikirana ipaki yawe ako kanya.`;
-    } else if (lang === 'sw') {
-      text = `Hapa kuna sera rasmi ya usafirishaji ya **Ituze** :\n\n- **Usafirishaji wa Bure :** Kwa maagizo yote zaidi ya **$50 USD**.\n- **Usafirishaji wa Kawaida :** Siku 3 hadi 5 za kazi ($4.99 USD).\n- **Usafirishaji wa Haraka (Express) :** Siku 1 hadi 2 za kazi ($12.99 USD).\n- **Ufuatiliaji :** Utapokea nambari ya kufuatilia kifurushi mara tu kinapotumwa.`;
-    } else {
-      text = `Here is everything you need to know about shipping with **Ituze**:\n\n- **Free Shipping:** Automatic free delivery on orders over **$50 USD**!\n- **Standard Delivery:** 3–5 business days ($4.99 USD).\n- **Express Priority:** 1–2 business days ($12.99 USD).\n- **Package Tracking:** Real-time tracking link and notifications sent via SMS and email.`;
+      return {
+        content: `La livraison est **gratuite dès $50 USD** d'achat. La livraison standard prend **3 à 5 jours ouvrés** ($4.99) et la livraison express prend **1 à 2 jours ouvrés** ($12.99).`,
+      };
     }
-    return { content: text };
+    if (lang === 'rw') {
+      return {
+        content: `Kugeza ibicuruzwa ni **ubuntu ku bicuruzwa birengeje $50 USD**. Uburyo busanzwe bitwara **iminsi 3–5 y'akazi** ($4.99), naho Express bigatwara **iminsi 1–2** ($12.99).`,
+      };
+    }
+    if (lang === 'sw') {
+      return {
+        content: `Usafirishaji ni **bure kwa maagizo zaidi ya $50 USD**. Usafirishaji wa kawaida huchukua **siku 3–5 za kazi** ($4.99) na Express huchukua **siku 1–2** ($12.99).`,
+      };
+    }
+    return {
+      content: `We offer **free shipping on all orders over $50 USD**. Standard shipping takes **3–5 business days** ($4.99), and Express Priority takes **1–2 business days** ($12.99).`,
+    };
   }
 
-  // 4. DISCOUNTS, COUPONS & DEALS INTENT
-  const isDealsIntent =
+  // 6. DISCOUNTS, COUPONS & DEALS
+  if (
     q.includes('coupon') ||
     q.includes('discount') ||
     q.includes('promo') ||
     q.includes('deal') ||
     q.includes('code') ||
     q.includes('remise') ||
-    q.includes('rabais') ||
-    q.includes('kugabanyirizwa') ||
     q.includes('punguzo') ||
     q.includes('offer') ||
-    q.includes('sale');
-
-  if (isDealsIntent) {
-    let text = '';
+    q.includes('sale')
+  ) {
     if (lang === 'fr') {
-      text = `Voici les codes promo actifs valables sur **Ituze** :\n\n- **Code WELCOME10 :** 10% de réduction immédiate sur votre commande.\n- **Code SAVE20 :** Réduction de 20% pour les paniers supérieurs à $150 USD.\n- **Application :** Entrez le code dans le champ "Code promo" lors de la finalisation de votre commande.`;
-    } else if (lang === 'rw') {
-      text = `Dore amakode y'ingirakamaro agabanya ibiciro kuri **Ituze** :\n\n- **Kodi WELCOME10 :** Igabanuka rya 10% kuri komande yawe.\n- **Kodi SAVE20 :** Igabanuka rya 20% kuri komande irengeje $150 USD.\n- **Uko ikoreshwa :** Wandika iyo kodi mu mwanya wagenewe "Discount Code" wishyura.`;
-    } else if (lang === 'sw') {
-      text = `Pata ofa na punguzo kabambe kutoka **Ituze** :\n\n- **Kodi WELCOME10 :** Punguzo la 10% kwenye agizo lako.\n- **Kodi SAVE20 :** Punguzo la 20% kwa maagizo zaidi ya $150 USD.\n- **Jinsi ya kutumia :** Weka kodi hiyo kwenye sehemu ya "Discount Code" wakati wa kulipa.`;
-    } else {
-      text = `Here are active discount codes you can apply on **Ituze**:\n\n- **Code WELCOME10:** 10% OFF your order storewide.\n- **Code SAVE20:** 20% OFF when your cart total exceeds $150 USD.\n- **How to apply:** Enter your code in the "Discount Code" field at Checkout and tap Apply!`;
+      return {
+        content: `Vous pouvez utiliser le code **WELCOME10** pour obtenir **10% de réduction** sur toute la boutique, ou **SAVE20** pour **20% de réduction** dès $150 d'achat lors du paiement.`,
+      };
     }
-    return { content: text };
+    if (lang === 'rw') {
+      return {
+        content: `Koresha kodi **WELCOME10** ubone **igabanuka rya 10%**, cyangwa **SAVE20** ubone **igabanuka rya 20%** kuri komande irengeje $150 wishyura.`,
+      };
+    }
+    if (lang === 'sw') {
+      return {
+        content: `Tumia kodi **WELCOME10** kupata **punguzo la 10%**, au **SAVE20** kupata **punguzo la 20%** kwa maagizo zaidi ya $150 wakati wa kulipa.`,
+      };
+    }
+    return {
+      content: `You can use code **WELCOME10** at checkout for **10% OFF** any order, or **SAVE20** for **20% OFF** orders over $150 USD.`,
+    };
   }
 
-  // 5. RETURNS & REFUNDS INTENT
-  const isReturnIntent =
+  // 7. RETURNS & REFUNDS
+  if (
     q.includes('return') ||
     q.includes('refund') ||
     q.includes('retour') ||
     q.includes('rembours') ||
     q.includes('gusubiza') ||
     q.includes('kurudisha') ||
-    q.includes('rejesha') ||
     q.includes('exchange') ||
-    q.includes('warranty');
-
-  if (isReturnIntent) {
-    let text = '';
+    q.includes('warranty')
+  ) {
     if (lang === 'fr') {
-      text = `Notre politique de retour chez **Ituze** est simple et transparente :\n\n- **Délai :** Vous disposez de **30 jours** à compter de la réception pour retourner un article.\n- **Condition :** L'article doit être dans son état et emballage d'origine avec ses étiquettes.\n- **Remboursement rapide :** Crédité sous 3 à 5 jours ouvrés sur votre moyen de paiement initial.\n- **Démarche :** Rendez-vous dans votre compte client sous "Mes commandes" pour demander un retour.`;
-    } else if (lang === 'rw') {
-      text = `Dore amategeko yo gusubiza ibicuruzwa kuri **Ituze** :\n\n- **Igihe cyo gusubiza :** Ufite **iminsi 30** uhereye igihe wakiriye igicuruzwa cyawe.\n- **Ibisabwa :** Igicuruzwa kigomba kuba kikiri gishya mu bipfunyika byacyo by'umwimerere.\n- **Kwishyurwa :** Amafaranga agarurwa mu minsi 3 kugeza kuri 5 y'akazi.\n- **Uko ubisaba :** Jya muri konti yawe mu gice cya "My Orders" uhitemo "Request Return".`;
-    } else if (lang === 'sw') {
-      text = `Sera yetu ya kurudisha bidhaa kwenye **Ituze** ni rahisi sana :\n\n- **Muda :** Una siku **30** kuanzia siku uliyopokea bidhaa.\n- **Masharti :** Bidhaa lazima iwe mpya na katika vifungashio vyake asili.\n- **Kurejeshewa pesa :** Ndani ya siku 3 hadi 5 za kazi kwenye njia yako ya malipo.\n- **Jinsi ya kuanza :** Ingia kwenye akaunti yako, chagua "My Orders" kisha bofya "Request Return".`;
-    } else {
-      text = `Here is **Ituze's** 30-day hassle-free return and refund policy:\n\n- **30-Day Window:** Return any item within 30 days of delivery for a full refund or exchange.\n- **Condition:** Items must be in original packaging and undamaged.\n- **Fast Refund:** Processed within 3–5 business days to your original payment method.\n- **How to Start:** Go to your account under **My Orders** and tap **Request Return**.`;
+      return {
+        content: `Vous disposez de **30 jours** après la livraison pour retourner un article dans son état d'origine et obtenir un remboursement complet sous 3 à 5 jours ouvrés.`,
+      };
     }
-    return { content: text };
+    if (lang === 'rw') {
+      return {
+        content: `Ufite **iminsi 30** nyuma yo kwakira igicuruzwa yo kukisubiza kikiri gishya ukishyurwa amafaranga yawe yose mu minsi 3–5 y'akazi.`,
+      };
+    }
+    if (lang === 'sw') {
+      return {
+        content: `Una **siku 30** baada ya kupokea bidhaa kuirudisha ikiwa katika hali yake ya asili na kurejeshewa pesa kamili ndani ya siku 3–5 za kazi.`,
+      };
+    }
+    return {
+      content: `We offer a **30-day hassle-free return policy**. Unused items in original packaging can be returned within 30 days for a full refund within 3–5 business days.`,
+    };
   }
 
-  // 6. PAYMENT METHODS INTENT
-  const isPaymentIntent =
+  // 8. PAYMENT METHODS
+  if (
     q.includes('pay') ||
     q.includes('paiement') ||
     q.includes('kwishyura') ||
@@ -405,158 +629,86 @@ function generateIntelligentItuzeResponse(
     q.includes('airtel') ||
     q.includes('visa') ||
     q.includes('mastercard') ||
-    q.includes('card') ||
-    q.includes('money');
-
-  if (isPaymentIntent) {
-    let text = '';
-    if (lang === 'fr') {
-      text = `**Ituze** propose des méthodes de paiement sécurisées et fiables :\n\n- **Mobile Money :** MTN Mobile Money (MoMo) & Airtel Money.\n- **Cartes bancaires :** Visa, Mastercard & American Express.\n- **Portefeuilles numériques :** PayPal.\n- **Sécurité :** Chiffrement SSL 256 bits conforme aux normes bancaires les plus strictes.`;
-    } else if (lang === 'rw') {
-      text = `Uburyo bwo kwishyura butekanye bwemewe kuri **Ituze** :\n\n- **Mobile Money :** MTN Mobile Money (MoMo) & Airtel Money.\n- **Amakarita ya Banki :** Visa na Mastercard.\n- **PayPal :** Yemerwa ku isi yose.\n- **Umutekano :** Kwishyura byose bikorwa mu mutekano usesuye hakoreshejwe ikoranabuhanga rya SSL 256-bit.`;
-    } else if (lang === 'sw') {
-      text = `Njia salama za malipo zinazokubalika kwenye **Ituze** :\n\n- **Mobile Money :** MTN MoMo na Airtel Money.\n- **Kadi za Benki :** Visa na Mastercard.\n- **PayPal :** Malipo ya kimataifa.\n- **Usalama :** Malipo yote yanalindwa kwa mfumo thabiti wa 256-bit SSL.`;
-    } else {
-      text = `**Ituze** supports flexible and secure payment options:\n\n- **Mobile Money:** MTN MoMo & Airtel Money (instant East Africa checkout).\n- **Credit / Debit Cards:** Visa, Mastercard, and American Express.\n- **Digital Wallets:** PayPal checkout.\n- **Bank-Grade Security:** 256-bit SSL encryption. We never store raw card credentials.`;
-    }
-    return { content: text };
+    q.includes('card')
+  ) {
+    return {
+      content:
+        lang === 'fr'
+          ? `Nous acceptons **MTN Mobile Money (MoMo)**, **Airtel Money**, les cartes **Visa / Mastercard** ainsi que **PayPal**. Toutes les transactions sont protégées par chiffrement SSL 256 bits.`
+          : lang === 'rw'
+          ? `Twemera kwishyura ukoresheje **MTN MoMo**, **Airtel Money**, amakarita ya **Visa / Mastercard** na **PayPal** mu mutekano usesuye.`
+          : lang === 'sw'
+          ? `Tunakubali malipo kupitia **MTN MoMo**, **Airtel Money**, kadi za **Visa / Mastercard**, na **PayPal** kwa usalama kamili.`
+          : `We accept **MTN Mobile Money (MoMo)**, **Airtel Money**, **Visa**, **Mastercard**, and **PayPal**. All payments are encrypted with 256-bit SSL security.`,
+    };
   }
 
-  // 7. CONTACT & CUSTOMER SUPPORT INTENT
-  const isContactIntent =
+  // 9. CONTACT & CUSTOMER SUPPORT
+  if (
     q.includes('contact') ||
     q.includes('support') ||
     q.includes('help') ||
     q.includes('phone') ||
     q.includes('email') ||
-    q.includes('adresse') ||
     q.includes('service client') ||
     q.includes('ubufasha') ||
-    q.includes('msaada') ||
-    q.includes('hotline');
-
-  if (isContactIntent) {
-    let text = '';
-    if (lang === 'fr') {
-      text = `Notre équipe d'assistance **Ituze** est à votre écoute 24h/24 et 7j/7 :\n\n- **Email de support :** hello@ituze.com\n- **Téléphone / WhatsApp :** +250 788 123 456\n- **Siège :** Kigali Heights, Boulevard de la Paix, Kigali, Rwanda\n- **Assistance en ligne :** Consultez notre [Page de contact](/contact) pour envoyer un message direct.`;
-    } else if (lang === 'rw') {
-      text = `Abashinzwe kwakira abakiriya kuri **Ituze** bari hafi yawe igihe cyose :\n\n- **Email :** hello@ituze.com\n- **Telefone / WhatsApp :** +250 788 123 456\n- **Icyicaro :** Kigali Heights, Boulevard de la Paix, Kigali, Rwanda\n- **Ubufasha :** Sura [Page yo kutwandikira](/contact) kugira ngo tukugoboke aka kanya.`;
-    } else if (lang === 'sw') {
-      text = `Wasaidizi wa **Ituze** wapo tayari kukuhudumia saa 24 kila siku :\n\n- **Barua pepe :** hello@ituze.com\n- **Simu / WhatsApp :** +250 788 123 456\n- **Ofisi :** Kigali Heights, Boulevard de la Paix, Kigali, Rwanda\n- **Msaada mtandaoni :** Tembelea [Ukurasa wa Mawasiliano](/contact) kutuma ujumbe wako.`;
-    } else {
-      text = `Our dedicated **Ituze Support** team is here for you 24/7:\n\n- **Email:** hello@ituze.com\n- **Phone & WhatsApp:** +250 788 123 456\n- **Office:** Kigali Heights, Boulevard de la Paix, Kigali, Rwanda\n- **Online Inquiry:** Visit our [Contact Page](/contact) to reach out directly.`;
-    }
-    return { content: text };
+    q.includes('msaada')
+  ) {
+    return {
+      content:
+        lang === 'fr'
+          ? `Vous pouvez joindre notre équipe 24h/24 par email à **hello@ituze.com**, par téléphone/WhatsApp au **+250 788 123 456**, ou via notre [Page de contact](/contact).`
+          : lang === 'rw'
+          ? `ushobora kutuvugisha kuri email **hello@ituze.com**, telefone/WhatsApp **+250 788 123 456**, cyangwa ku [Rupapuro rwo kutwandikira](/contact).`
+          : lang === 'sw'
+          ? `Unaweza kuwasiliana nasi saa 24 kupitia barua pepe **hello@ituze.com**, simu/WhatsApp **+250 788 123 456**, au kwenye [Ukurasa wa Mawasiliano](/contact).`
+          : `You can reach our support team 24/7 at **hello@ituze.com**, via phone/WhatsApp at **+250 788 123 456**, or through our [Contact Page](/contact).`,
+    };
   }
 
-  // 8. SPECIFIC PRODUCT DISCOVERY INTENT (Only triggered when the customer explicitly asks for products)
-  if (isExplicitProductInquiry(q)) {
-    const matchedProducts: ProductSummary[] = [];
-
-    const isAudioQuery = q.includes('audio') || q.includes('headphone') || q.includes('earbud') || q.includes('sound') || q.includes('ecouteur');
-    const isWatchQuery = q.includes('watch') || q.includes('montre') || q.includes('chrono') || q.includes('wearable') || q.includes('isaha');
-    const isLightQuery = q.includes('light') || q.includes('lumina') || q.includes('lamp') || q.includes('itara');
-    const isPowerQuery = q.includes('power bank') || q.includes('charger') || q.includes('charge') || q.includes('battery') || q.includes('station');
-
-    if (isAudioQuery) {
-      matchedProducts.push(...products.filter((p) => p.category?.toLowerCase().includes('audio') || p.name.toLowerCase().includes('headphones') || p.name.toLowerCase().includes('pods')));
-    } else if (isWatchQuery) {
-      matchedProducts.push(...products.filter((p) => p.category?.toLowerCase().includes('wearable') || p.name.toLowerCase().includes('watch')));
-    } else if (isLightQuery) {
-      matchedProducts.push(...products.filter((p) => p.category?.toLowerCase().includes('smart home') || p.name.toLowerCase().includes('light')));
-    } else if (isPowerQuery) {
-      matchedProducts.push(...products.filter((p) => p.category?.toLowerCase().includes('accessories') || p.name.toLowerCase().includes('power') || p.name.toLowerCase().includes('charge')));
-    } else {
-      matchedProducts.push(...products.slice(0, 3));
-    }
-
-    const finalProducts = matchedProducts.slice(0, 3);
-
-    let text = '';
-    if (lang === 'fr') {
-      text = `Voici les produits correspondants disponibles actuellement dans notre catalogue **Ituze** :\n\n- **100% Originaux :** Tous nos appareils sont certifiés avec garantie.\n- **Livraison rapide :** Expédition prioritaire avec suivi.\n\nCliquez sur un article ci-dessous pour voir les détails ou l'ajouter à votre panier :`;
-    } else if (lang === 'rw') {
-      text = `Dore ibicuruzwa bihari bifitanye isano n'ibyo usabye muri **Ituze** :\n\n- **Umwimerere :** Ibicuruzwa byose ni umwimerere 100% bifite garanti.\n- **Kugezwaho byihuse :** Icyo uhisemo kikugeraho mu mutekano usesuye.\n\nKanda ku gicuruzwa kiri munsi kureba ibirambuye :`;
-    } else if (lang === 'sw') {
-      text = `Hapa kuna bidhaa zilizopo kwenye duka la **Ituze** zinazolingana na ombi lako :\n\n- **Ubora Halisi :** Bidhaa zote ni halisi 100% zikiwa na dhamana rasmi.\n- **Usafirishaji wa Haraka :** Uwasilishaji salama na ufuatiliaji wa moja kwa moja.\n\nBofya bidhaa hapa chini kuangalia maelezo zaidi :`;
-    } else {
-      text = `Here are the matching in-stock products from our **Ituze** catalog:\n\n- **100% Genuine:** Certified devices with manufacturer warranty.\n- **Fast Dispatch:** Same-day warehouse dispatch with full insurance.\n\nTap any product card below to view specs or add to cart:`;
-    }
-    return { content: text, matchedProducts: finalProducts };
-  }
-
-  // 9. ACCOUNT, WISHLIST, HOW TO ORDER
-  const isAccountOrGuide =
+  // 10. ACCOUNT / LOGIN / SIGNUP QUESTIONS
+  if (
     q.includes('account') ||
+    q.includes('login') ||
+    q.includes('sign in') ||
+    q.includes('sign up') ||
+    q.includes('register') ||
+    q.includes('password') ||
     q.includes('compte') ||
     q.includes('konti') ||
-    q.includes('akaunti') ||
-    q.includes('password') ||
-    q.includes('login') ||
-    q.includes('signup') ||
-    q.includes('register') ||
-    q.includes('cart') ||
-    q.includes('panier') ||
-    q.includes('wishlist');
-
-  if (isAccountOrGuide) {
-    let text = '';
-    if (lang === 'fr') {
-      text = `Gérer vos achats et votre compte **Ituze** est très simple :\n\n- **Créer un compte :** Cliquez sur [Créer un compte](/auth/register) pour suivre vos commandes et sauvegarder vos adresses.\n- **Mot de passe oublié :** Utilisez le lien de réinitialisation sur la page de connexion.\n- **Panier & Favoris :** Vos articles sélectionnés restent enregistrés sur tous vos appareils.`;
-    } else if (lang === 'rw') {
-      text = `Gucunga ibyo uhaha na konti yawe kuri **Ituze** biroroshye cyane :\n\n- **Gufungura konti :** Kanda kuri [Gufungura konti](/auth/register) kugira ngo ukurikirane ibyo watumije.\n- **Kwibagirwa ijambobanga :** Koresha inzira yo kongera gushyiraho irindi kuri page yo kwinjira.\n- **Agaseke n'Ibyo ukunda :** Ibicuruzwa wishimiye bibikwa neza kuri telefone na mudasobwa yawe.`;
-    } else if (lang === 'sw') {
-      text = `Kusimamia ununuzi na akaunti yako ya **Ituze** ni rahisi mno :\n\n- **Fungua akaunti :** Bofya [Fungua akaunti](/auth/register) kufuatilia maagizo yako na kuhifadhi anwani zako.\n- **Umesahau neno la siri :** Tumia kiungo cha kubadilisha neno la siri kwenye ukurasa wa kuingia.\n- **Gari na Vipendwa :** Bidhaa ulizochagua zinahifadhiwa kwa usalama kwenye vifaa vyako vyote.`;
-    } else {
-      text = `Managing your **Ituze** shopping experience is effortless:\n\n- **Create an Account:** Visit [Create Account](/auth/register) to save shipping addresses and access one-click checkout.\n- **Reset Password:** Tap "Forgot Password" on the sign-in screen to receive a secure reset link.\n- **Wishlist & Cart:** Save your favorite items across devices anytime by clicking the heart icon.`;
-    }
-    return { content: text };
+    q.includes('akaunti')
+  ) {
+    return {
+      content:
+        lang === 'fr'
+          ? `Vous pouvez vous [connecter ici](/auth/login) ou [créer un compte](/auth/register) avec votre adresse email et mot de passe pour accéder à votre tableau de bord et suivre vos commandes.`
+          : lang === 'rw'
+          ? `Ushobora [kwinjira hano](/auth/login) cyangwa [gufungura konti](/auth/register) ukoresheje email yawe n'ijambobanga kugira ngo ukurikirane komande zawe.`
+          : lang === 'sw'
+          ? `Unaweza [kuingia hapa](/auth/login) au [kufungua akaunti](/auth/register) kwa barua pepe na neno la siri ili kufuatilia maagizo yako kwenye dashibodi.`
+          : `You can easily [Sign In](/auth/login) or [Create an Account](/auth/register) using your email and password to access your personal dashboard and track your orders in real time.`,
+    };
   }
 
-  // 10. GREETING / CASUAL CHAT / IDENTITY (Answers directly WITHOUT showing product cards)
-  const isGreeting =
-    q.includes('hi') ||
-    q.includes('hello') ||
-    q.includes('hey') ||
-    q.includes('bonjour') ||
-    q.includes('salut') ||
-    q.includes('muraho') ||
-    q.includes('mwiriwe') ||
-    q.includes('habari') ||
-    q.includes('hujambo') ||
-    q.includes('who are you') ||
-    q.includes('ituze ai') ||
-    q.includes('qui es-tu') ||
-    q.includes('uri nde') ||
-    q.includes('wewe ni nani');
-
-  if (isGreeting) {
-    let text = '';
-    if (lang === 'fr') {
-      text = `Bonjour **${customerName}** ! Je suis **Ituze AI**, l'assistant virtuel officiel de **Ituze**.\n\nJe suis à votre entière disposition pour répondre à toutes vos questions :\n- **Suivre une commande** ou vérifier un numéro de colis.\n- **Informations de livraison**, retours sous 30 jours et modes de paiement.\n- **Découvrir des produits** ou des codes promo actifs.\n\nQue puis-je faire pour vous aujourd'hui ?`;
-    } else if (lang === 'rw') {
-      text = `Muraho **${customerName}** ! Ndi **Ituze AI**, umufasha wawe w'ikoranabuhanga muri **Ituze**.\n\nNiteguye kugufasha mu bibazo byose waba ufite :\n- **Gukurikirana aho komande yawe igeze** n'igihe izagereraho.\n- **Amakuru yo kugezwaho ibicuruzwa**, gusubiza ibyo waguze no kwishyura.\n- **Gusubiza ibibazo byose** byerekeye amaduka n'amapromosiyo.\n\nNdagufasha iki uyu munsi ?`;
-    } else if (lang === 'sw') {
-      text = `Habari **${customerName}** ! Mimi ni **Ituze AI**, msaidizi rasmi wa **Ituze**.\n\nNinaweza kukusaidia kujibu maswali yako yote mara moja :\n- **Kufuatilia agizo lako** na kuangalia hali ya usafirishaji.\n- **Taarifa za usafirishaji**, kurudisha bidhaa ndani ya siku 30, na njia za malipo.\n- **Kupata majibu** kuhusu punguzo na huduma zetu.\n\nNawezaje kukusaidia leo ?`;
-    } else {
-      text = `Hello **${customerName}**! 👋 I am **Ituze AI**, the official virtual assistant for **Ituze**.\n\nI am here to answer any questions you have:\n- **Track your orders** and check live delivery statuses.\n- **Shipping policies**, 30-day returns, and payment options.\n- **Store guidance**, coupons, or account assistance.\n\nHow can I help you today?`;
-    }
-    return { content: text };
-  }
-
-  // 11. GENERAL PROFESSIONAL FALLBACK (Answers question directly without unsolicited product cards)
-  let text = '';
+  // 11. CONCISE, NATURAL DEFAULT RESPONSE (No unsolicited products or wall of text)
   if (lang === 'fr') {
-    text = `Merci pour votre question ! Voici les informations clés de **Ituze** pour vous assister :\n\n- **Catalogue :** Électronique haut de gamme, accessoires et objets connectés 100% authentiques.\n- **Livraison gratuite :** Dès $50 USD d'achats avec expédition suivie.\n- **Garantie 30 jours :** Retours simples et remboursement garanti.\n- **Paiements sécurisés :** MTN MoMo, Airtel Money, Visa, Mastercard et PayPal.\n- **Assistance 24/7 :** Contactez-nous à hello@ituze.com ou au +250 788 123 456.\n\nN'hésitez pas à me donner plus de détails sur votre demande !`;
-  } else if (lang === 'rw') {
-    text = `Urakoze ku kibazo cyawe ! Dore amakuru y'ingirakamaro kuri **Ituze** yakugoboka :\n\n- **Ibicuruzwa :** Iby'ikoranabuhanga n'ibikoresho byizewe by'umwimerere 100%.\n- **Kugezwaho ku buntu :** Kuri buri komande irengeje $50 USD.\n- **Garanti y'iminsi 30 :** Gusubizwa amafaranga niba utanyuzwe.\n- **Kwishyura byoroshye :** MTN MoMo, Airtel Money, Visa, Mastercard na PayPal.\n- **Ubufasha :** Twandikire kuri hello@ituze.com cyangwa uhamagare +250 788 123 456.\n\nBaza ikindi kibazo cyose waba ufite ngufashe !`;
-  } else if (lang === 'sw') {
-    text = `Asante kwa swali lako ! Hapa kuna taarifa muhimu za **Ituze** kukusaidia :\n\n- **Bidhaa zetu :** Vifaa vya kielektroniki vya kiwango cha juu vilivyo halisi 100%.\n- **Usafirishaji wa bure :** Kwa maagizo yote zaidi ya $50 USD.\n- **Dhamana ya siku 30 :** Kurudisha bidhaa kwa amani na uhakika.\n- **Malipo salama :** MTN MoMo, Airtel Money, Visa, Mastercard na PayPal.\n- **Msaada :** Wasiliana nasi kupitia hello@ituze.com au piga +250 788 123 456.\n\nNiambie swali lako lingine lolote nikusaidie mara moja !`;
-  } else {
-    text = `Thank you for your question! Here is helpful information about **Ituze** to assist you:\n\n- **Quality Guarantee:** 100% authentic curated electronics and lifestyle gear.\n- **Free Shipping:** Automatic free shipping on all orders over $50 USD.\n- **30-Day Hassle-Free Returns:** Full peace of mind with our return policy.\n- **Multiple Payment Options:** MTN MoMo, Airtel Money, Visa, Mastercard, and PayPal.\n- **24/7 Support:** Reach our team at hello@ituze.com or +250 788 123 456.\n\nPlease feel free to ask any specific question about your order, our policies, or our services!`;
+    return {
+      content: `Je suis là pour vous aider ! Posez-moi une question sur le suivi d'une commande (ex: ORD-2026-8912), la livraison, les retours, ou demandez-moi de vous montrer des produits.`,
+    };
   }
-
-  return { content: text };
+  if (lang === 'rw') {
+    return {
+      content: `Ndi hano ngo ngufashe! Ushobora kumbaza ibyerekeye gukurikirana komande yawe (urugero: ORD-2026-8912), kugeza ibicuruzwa, cyangwa ukansaba kukwereka ibicuruzwa bihari.`,
+    };
+  }
+  if (lang === 'sw') {
+    return {
+      content: `Niko hapa kukusaidia! Unaweza kuniuliza kuhusu kufuatilia agizo lako (mfano: ORD-2026-8912), usafirishaji, au uniombe nikuonyeshe bidhaa zetu.`,
+    };
+  }
+  return {
+    content: `I'd be happy to help with that! You can ask me to track an order (e.g., **ORD-2026-8912**), check shipping or return policies, or ask me to recommend products whenever you're ready.`,
+  };
 }
 
 export async function sendChatMessage(
@@ -571,16 +723,26 @@ export async function sendChatMessage(
     fetchUserOrders(userId),
   ]);
 
-  // Check if message asks for a specific order number (e.g., ORD-2026-XXXX)
   const orderNumberMatch = message.match(/ORD-[\w\d-]+/i);
   let specificOrder: OrderSummary | null = null;
   if (orderNumberMatch) {
     specificOrder = await findOrderByNumber(orderNumberMatch[0]);
   }
 
-  // Set up a quick AbortController with a 2200ms timeout
+  const wantsProducts = isExplicitProductInquiry(message);
+  const qLower = message.trim().toLowerCase();
+  const isOrderQuery =
+    Boolean(specificOrder) ||
+    qLower.includes('order') ||
+    qLower.includes('track') ||
+    qLower.includes('commande') ||
+    qLower.includes('suivi') ||
+    qLower.includes('komande') ||
+    qLower.includes('agizo');
+
+  // Call the server-side Gemini endpoint (/api/chat)
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 2200);
+  const timeoutId = setTimeout(() => controller.abort(), 4500);
 
   try {
     const productsContext = popularProducts
@@ -590,77 +752,64 @@ export async function sendChatMessage(
       )
       .join('\n');
 
-    const ordersContext = userOrders.length > 0
-      ? userOrders
-          .map(
-            (o) =>
-              `- Order #${o.order_number}: Status "${o.status}", Total: $${o.total} ${o.currency}, Placed ${new Date(o.created_at).toLocaleDateString()}, Items: ${o.items_summary?.join(', ') || 'Items'}`
-          )
-          .join('\n')
-      : 'No past orders.';
+    const ordersContext =
+      userOrders.length > 0
+        ? userOrders
+            .map(
+              (o) =>
+                `- Order #${o.order_number}: Status "${o.status}", Total: $${o.total} ${o.currency}, Placed ${new Date(o.created_at).toLocaleDateString()}, Items: ${o.items_summary?.join(', ') || 'Items'}`
+            )
+            .join('\n')
+        : 'No past orders.';
 
-    const systemDirective = `You are "Ituze AI", the official intelligent personal shopping assistant for "Ituze" (https://ituze.store).
-Language: Respond fluently in language code "${lang}".
-Customer: ${userId ? `Logged in as ${userName || 'Customer'}` : 'Guest'}
-Orders:\n${ordersContext}${specificOrder ? `\nFound order: #${specificOrder.order_number} (${specificOrder.status})` : ''}
-Products in catalog:\n${productsContext}
-Policies: Free shipping over $50. Standard shipping $4.99 (3-5 days). Express $12.99 (1-2 days). 30-day returns. MoMo, Airtel, Cards, PayPal. Active Coupons: WELCOME10 (10% off), SAVE20 (20% off >$150).
-IMPORTANT INSTRUCTION: Answer ONLY the question asked in a professional, courteous, clear, and direct manner. Do NOT attach or recommend unrequested products unless the customer specifically asks for product recommendations or items to buy.`;
+    const systemContext = `Customer: ${userId ? `Logged in as ${userName || 'Customer'}` : 'Guest'}
+Customer Orders:
+${ordersContext}${specificOrder ? `\nLooked up Order: #${specificOrder.order_number} (Status: ${specificOrder.status}, Total: $${specificOrder.total} ${specificOrder.currency})` : ''}
+Store Catalog (ONLY mention if user explicitly asks for products):
+${productsContext}
+Store Policies: Free shipping over $50. Standard shipping $4.99 (3-5 days). Express $12.99 (1-2 days). 30-day returns. Payment: MTN MoMo, Airtel Money, Visa, Mastercard, PayPal. Active Coupons: WELCOME10 (10% off), SAVE20 (20% off over $150).`;
 
-    const contents = [
-      {
-        role: 'user',
-        parts: [{ text: `[SYSTEM DIRECTIVE]\n${systemDirective}\n\n[USER PROMPT]: ${message}` }],
-      },
-    ];
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents }),
-        signal: controller.signal,
-      }
-    );
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        history: history.slice(-6).map((m) => ({ role: m.role, content: m.content })),
+        systemContext,
+        lang,
+      }),
+      signal: controller.signal,
+    });
 
     clearTimeout(timeoutId);
 
     if (response.ok) {
       const data = await response.json();
-      const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (replyText && replyText.trim().length > 0) {
-        // ONLY attach matched product cards if the user specifically asked for products or recommendations
-        const matchedProducts: ProductSummary[] = [];
-        if (isExplicitProductInquiry(message)) {
-          const lower = (message + ' ' + replyText).toLowerCase();
-          for (const p of popularProducts) {
-            if (lower.includes(p.name.toLowerCase()) || lower.includes(p.slug.toLowerCase())) {
-              if (!matchedProducts.find((i) => i.id === p.id)) matchedProducts.push(p);
-            }
-          }
-        }
+      const replyText = (data?.text || '').trim();
+      if (replyText.length > 0) {
+        const matchedProducts = wantsProducts
+          ? selectMatchingProducts(message, replyText, popularProducts)
+          : undefined;
 
         const matchedOrders: OrderSummary[] = specificOrder
           ? [specificOrder]
-          : (message.toLowerCase().includes('order') || message.toLowerCase().includes('commande') || message.toLowerCase().includes('track')) && userOrders.length > 0
+          : isOrderQuery && userOrders.length > 0
           ? userOrders.slice(0, 3)
           : [];
 
         return {
           content: replyText,
-          matchedProducts: matchedProducts.length > 0 ? matchedProducts.slice(0, 3) : undefined,
+          matchedProducts: matchedProducts && matchedProducts.length > 0 ? matchedProducts : undefined,
           matchedOrders: matchedOrders.length > 0 ? matchedOrders : undefined,
         };
       }
     }
   } catch {
-    // Expected fallback when external Gemini network has high latency or is unreachable
+    // Seamless fallback when running as static build or offline
   } finally {
     clearTimeout(timeoutId);
   }
 
-  // Instant, intelligent, reliable response from our high-speed engine
   return generateIntelligentItuzeResponse(
     message,
     popularProducts,

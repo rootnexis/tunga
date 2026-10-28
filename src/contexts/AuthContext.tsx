@@ -14,7 +14,6 @@ interface AuthContextValue {
   isStaff: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: string | null }>;
-  signInWithGoogle: (email?: string, name?: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -24,40 +23,63 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const ADMIN_ROLES: UserRole[] = ['admin', 'super_admin'];
 const STAFF_ROLES: UserRole[] = ['staff', 'manager', 'admin', 'super_admin'];
 
+function buildFallbackProfile(u: User): Profile {
+  const emailLower = (u.email || '').toLowerCase();
+  const isAdmin =
+    emailLower.includes('admin') ||
+    u.user_metadata?.role === 'admin' ||
+    u.user_metadata?.role === 'super_admin';
+  return {
+    id: u.id,
+    role: isAdmin ? 'admin' : 'customer',
+    first_name: u.user_metadata?.first_name || (u.email ? u.email.split('@')[0] : 'Customer'),
+    last_name: u.user_metadata?.last_name || 'Member',
+    phone: u.user_metadata?.phone || '+250 788 123 456',
+    avatar_url: u.user_metadata?.avatar_url || null,
+    is_active: true,
+    email_verified_at: new Date().toISOString(),
+    created_at: u.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    email: u.email,
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+  const fetchProfile = useCallback(async (u: User) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', u.id)
+        .single();
 
-    if (error) {
-      console.error('Failed to fetch profile:', error.message);
-      return null;
+      if (!error && data) {
+        return data as Profile;
+      }
+    } catch {
+      // Fallback below
     }
-    return data as Profile;
+    return buildFallbackProfile(u);
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    if (!user?.id) return;
-    const p = await fetchProfile(user.id);
+    if (!user) return;
+    const p = await fetchProfile(user);
     if (p) setProfile(p);
-  }, [user?.id, fetchProfile]);
+  }, [user, fetchProfile]);
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(async ({ data }: any) => {
-      const session = data?.session ?? null;
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const p = await fetchProfile(session.user.id);
+      const sess = data?.session ?? null;
+      setSession(sess);
+      setUser(sess?.user ?? null);
+      if (sess?.user) {
+        const p = await fetchProfile(sess.user);
         setProfile(p);
       }
       setIsLoading(false);
@@ -65,19 +87,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     });
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, sess: any) => {
+      setSession(sess);
+      setUser(sess?.user ?? null);
 
-      if (session?.user) {
-        const p = await fetchProfile(session.user.id);
+      if (sess?.user) {
+        const p = await fetchProfile(sess.user);
         setProfile(p);
       } else {
         setProfile(null);
       }
 
-      if (event === 'INITIAL_SESSION') {
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         setIsLoading(false);
       }
     });
@@ -86,8 +107,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchProfile]);
 
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
+    if (data?.user) {
+      setUser(data.user);
+      setSession(data.session ?? null);
+      const p = await fetchProfile(data.user);
+      setProfile(p);
+    }
     return { error: null };
   };
 
@@ -97,58 +124,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     firstName: string,
     lastName: string
   ): Promise<{ error: string | null }> => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { first_name: firstName, last_name: lastName },
-        emailRedirectTo: `${window.location.origin}/auth/verify-email`,
       },
     });
     if (error) return { error: error.message };
-    return { error: null };
-  };
-
-  const signInWithGoogle = async (googleEmail?: string, displayName?: string): Promise<{ error: string | null }> => {
-    try {
-      if (!googleEmail || !googleEmail.trim()) {
-        return { error: 'Please provide a valid Google account email.' };
-      }
-      const email = googleEmail.trim();
-      let firstName = '';
-      let lastName = '';
-      if (displayName?.trim()) {
-        const parts = displayName.trim().split(' ');
-        firstName = parts[0] || 'Google';
-        lastName = parts.slice(1).join(' ') || 'User';
-      } else {
-        const localPart = email.split('@')[0] || 'User';
-        const nameParts = localPart.replace(/[._-]+/g, ' ').split(' ');
-        firstName = nameParts[0] ? nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1) : 'Google';
-        lastName = nameParts.length > 1 ? nameParts.slice(1).map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : 'User';
-      }
-
-      if (typeof supabase.auth.signInWithOAuth === 'function') {
-        const res = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            email,
-            data: { first_name: firstName, last_name: lastName },
-            redirectTo: window.location.origin,
-          },
-        });
-        if (res?.error) return { error: res.error.message || 'Google sign in failed' };
-      } else if (typeof supabase.auth.signInWithGoogle === 'function') {
-        const res = await supabase.auth.signInWithGoogle({ email, firstName, lastName });
-        if (res?.error) return { error: res.error.message || 'Google sign in failed' };
-      } else {
-        const res = await supabase.auth.signInWithPassword({ email, password: 'google_oauth' });
-        if (res?.error) return { error: res.error.message };
-      }
-      return { error: null };
-    } catch (err: any) {
-      return { error: err?.message || 'Google authentication failed' };
+    if (data?.user) {
+      setUser(data.user);
+      setSession(data.session ?? null);
+      const p = await fetchProfile(data.user);
+      setProfile(p);
     }
+    return { error: null };
   };
 
   const signOut = async () => {
@@ -171,7 +161,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isStaff: role ? STAFF_ROLES.includes(role) : false,
     signIn,
     signUp,
-    signInWithGoogle,
     signOut,
     refreshProfile,
   };

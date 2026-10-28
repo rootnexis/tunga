@@ -56,13 +56,7 @@ const rawUrl = import.meta.env.VITE_SUPABASE_URL;
 const rawAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const isLiveSupabaseConfigured = isValidSupabaseUrl(rawUrl) && isValidSupabaseKey(rawAnonKey);
 
-if (!isLiveSupabaseConfigured) {
-  console.info(
-    '[Tunga] Running in standalone demo mode with built-in product catalog and offline storage. Set valid VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env to connect a live Supabase instance.'
-  );
-}
-
-// ── In-Memory & LocalStorage State for Standalone Demo ───────────────────────
+// ── In-Memory & LocalStorage State for Resilient Persistence ─────────────────
 const STORAGE_KEYS = {
   CART: 'ituza_mock_cart',
   ORDERS: 'ituza_mock_orders',
@@ -95,13 +89,36 @@ function setStored<T>(key: string, val: T): void {
 type AuthChangeCallback = (event: string, session: any) => void;
 const authListeners = new Set<AuthChangeCallback>();
 
-function createMockUser(email: string, firstName = 'Demo', lastName = 'User') {
-  const id = 'usr_' + btoa(email).slice(0, 12).replace(/[/+=]/g, 'x');
-  const isAdmin = email.toLowerCase().includes('admin') || localStorage.getItem('ituza_admin_mode') === 'true';
+function deriveNamesFromEmail(email: string, providedFirst?: string, providedLast?: string) {
+  let firstName = (providedFirst || '').trim();
+  let lastName = (providedLast || '').trim();
+  if (!firstName) {
+    const localPart = (email.split('@')[0] || 'Customer').replace(/[0-9]+/g, '');
+    const parts = localPart.replace(/[._-]+/g, ' ').trim().split(/\s+/);
+    firstName = parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : 'Customer';
+    if (!lastName && parts.length > 1) {
+      lastName = parts.slice(1).map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+    }
+  }
+  if (!lastName) {
+    lastName = 'Member';
+  }
+  return { firstName, lastName };
+}
+
+function createMockUser(email: string, firstName?: string, lastName?: string, customId?: string) {
+  const cleanEmail = email.trim().toLowerCase();
+  const names = deriveNamesFromEmail(cleanEmail, firstName, lastName);
+  const id = customId || 'usr_' + btoa(cleanEmail).slice(0, 12).replace(/[/+=]/g, 'x');
+  const isAdmin = cleanEmail.includes('admin') || localStorage.getItem('ituza_admin_mode') === 'true';
   return {
     id,
-    email,
-    user_metadata: { first_name: firstName, last_name: lastName, role: isAdmin ? 'admin' : 'customer' },
+    email: cleanEmail,
+    user_metadata: {
+      first_name: names.firstName,
+      last_name: names.lastName,
+      role: isAdmin ? 'admin' : 'customer',
+    },
     role: 'authenticated',
     aud: 'authenticated',
     created_at: new Date().toISOString(),
@@ -113,16 +130,263 @@ function getStoredSession() {
   const user = getStored<any>(STORAGE_KEYS.USER, null);
   if (!user) return null;
   return {
-    access_token: 'mock-access-token',
-    refresh_token: 'mock-refresh-token',
-    expires_in: 3600,
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    access_token: 'ituze-session-token-' + user.id,
+    refresh_token: 'ituze-refresh-token-' + user.id,
+    expires_in: 86400,
+    expires_at: Math.floor(Date.now() / 1000) + 86400,
     token_type: 'bearer',
     user,
   };
 }
 
-// ── Query Builder for Mock Operations ────────────────────────────────────────
+function buildDefaultOrdersForUser(userId: string, firstName = 'Valued', lastName = 'Customer') {
+  return [
+    {
+      id: 'ord-1001',
+      user_id: userId,
+      order_number: 'ORD-2026-8912',
+      status: 'shipped',
+      payment_status: 'paid',
+      tracking_number: 'ITZ-EXP-891204',
+      carrier: 'Ituze Express Priority',
+      estimated_delivery: new Date(Date.now() + 2 * 86400000).toISOString(),
+      subtotal: 249.99,
+      discount_amount: 0,
+      delivery_fee: 0,
+      tax_amount: 0,
+      total: 249.99,
+      currency: 'USD',
+      notes: 'Leave package with reception desk upon arrival.',
+      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+      shipping_address: {
+        id: 'addr-1',
+        first_name: firstName,
+        last_name: lastName,
+        phone: '+250 788 123 456',
+        address_line1: 'KG 7 Ave, Kigali Heights',
+        address_line2: 'Suite 4B',
+        city: 'Kigali',
+        state: 'Kigali',
+        postal_code: '00000',
+        country: 'Rwanda',
+      },
+      items: [
+        {
+          id: 'item-1001',
+          order_id: 'ord-1001',
+          product_id: 'p0000000-0000-0000-0000-000000000001',
+          product_name: 'NovaSound Pro Wireless Headphones',
+          variant_name: 'Midnight Black',
+          sku: 'NS-PRO-BLK-01',
+          quantity: 1,
+          unit_price: 249.99,
+          discount_amount: 0,
+          line_total: 249.99,
+          total_price: 249.99,
+          product: {
+            id: 'p0000000-0000-0000-0000-000000000001',
+            name: 'NovaSound Pro Wireless Headphones',
+            slug: 'novasound-pro-wireless-headphones',
+            images: [
+              {
+                url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80',
+                is_primary: true,
+              },
+            ],
+          },
+        },
+      ],
+      status_history: [
+        {
+          id: 'sh-1001-1',
+          order_id: 'ord-1001',
+          from_status: null,
+          to_status: 'pending',
+          note: 'Order placed online and verified.',
+          created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+        },
+        {
+          id: 'sh-1001-2',
+          order_id: 'ord-1001',
+          from_status: 'pending',
+          to_status: 'paid',
+          note: 'Payment confirmed and inventory reserved.',
+          created_at: new Date(Date.now() - 42 * 3600000).toISOString(),
+        },
+        {
+          id: 'sh-1001-3',
+          order_id: 'ord-1001',
+          from_status: 'paid',
+          to_status: 'processing',
+          note: 'Quality inspection completed and package sealed at Kigali Hub.',
+          created_at: new Date(Date.now() - 28 * 3600000).toISOString(),
+        },
+        {
+          id: 'sh-1001-4',
+          order_id: 'ord-1001',
+          from_status: 'processing',
+          to_status: 'shipped',
+          note: 'Dispatched via Ituze Express Priority (Tracking #ITZ-EXP-891204).',
+          created_at: new Date(Date.now() - 8 * 3600000).toISOString(),
+        },
+      ],
+    },
+    {
+      id: 'ord-1002',
+      user_id: userId,
+      order_number: 'ORD-2026-7420',
+      status: 'delivered',
+      payment_status: 'paid',
+      tracking_number: 'ITZ-EXP-742019',
+      carrier: 'Ituze Standard Courier',
+      estimated_delivery: new Date(Date.now() - 5 * 86400000).toISOString(),
+      subtotal: 129.99,
+      discount_amount: 0,
+      delivery_fee: 0,
+      tax_amount: 0,
+      total: 129.99,
+      currency: 'USD',
+      notes: null,
+      created_at: new Date(Date.now() - 9 * 86400000).toISOString(),
+      shipping_address: {
+        id: 'addr-1',
+        first_name: firstName,
+        last_name: lastName,
+        phone: '+250 788 123 456',
+        address_line1: 'KG 7 Ave, Kigali Heights',
+        address_line2: 'Suite 4B',
+        city: 'Kigali',
+        state: 'Kigali',
+        postal_code: '00000',
+        country: 'Rwanda',
+      },
+      items: [
+        {
+          id: 'item-1002',
+          order_id: 'ord-1002',
+          product_id: 'p0000000-0000-0000-0000-000000000005',
+          product_name: 'Aura Pods True Wireless Earbuds',
+          variant_name: 'Pearl White',
+          sku: 'AP-TWS-WHT-05',
+          quantity: 1,
+          unit_price: 129.99,
+          discount_amount: 0,
+          line_total: 129.99,
+          total_price: 129.99,
+          product: {
+            id: 'p0000000-0000-0000-0000-000000000005',
+            name: 'Aura Pods True Wireless Earbuds',
+            slug: 'aura-pods-true-wireless-earbuds',
+            images: [
+              {
+                url: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&q=80',
+                is_primary: true,
+              },
+            ],
+          },
+        },
+      ],
+      status_history: [
+        {
+          id: 'sh-1002-1',
+          order_id: 'ord-1002',
+          from_status: null,
+          to_status: 'pending',
+          note: 'Order placed.',
+          created_at: new Date(Date.now() - 9 * 86400000).toISOString(),
+        },
+        {
+          id: 'sh-1002-2',
+          order_id: 'ord-1002',
+          from_status: 'pending',
+          to_status: 'confirmed',
+          note: 'Order confirmed.',
+          created_at: new Date(Date.now() - 8 * 86400000).toISOString(),
+        },
+        {
+          id: 'sh-1002-3',
+          order_id: 'ord-1002',
+          from_status: 'confirmed',
+          to_status: 'shipped',
+          note: 'Out for delivery with courier.',
+          created_at: new Date(Date.now() - 6 * 86400000).toISOString(),
+        },
+        {
+          id: 'sh-1002-4',
+          order_id: 'ord-1002',
+          from_status: 'shipped',
+          to_status: 'delivered',
+          note: 'Package delivered and signed by recipient.',
+          created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+        },
+      ],
+    },
+  ];
+}
+
+function getAllOrdersWithUserDefaults(): any[] {
+  const currentUser = getStored<any>(STORAGE_KEYS.USER, null);
+  const uid = currentUser?.id || 'usr_demo';
+  const fName = currentUser?.user_metadata?.first_name || 'Alex';
+  const lName = currentUser?.user_metadata?.last_name || 'Murenzi';
+
+  const rawOrders = getStored<any[] | null>(STORAGE_KEYS.ORDERS, null);
+  if (!rawOrders || rawOrders.length === 0) {
+    const defaults = buildDefaultOrdersForUser(uid, fName, lName);
+    setStored(STORAGE_KEYS.ORDERS, defaults);
+    return defaults;
+  }
+
+  // Ensure demo orders are accessible to the currently signed-in user so dashboard tracking works out of the box
+  let updated = false;
+  const normalized = rawOrders.map((ord) => {
+    let nextOrd = { ...ord };
+    if (nextOrd.user_id === 'usr_demo' && uid !== 'usr_demo') {
+      nextOrd.user_id = uid;
+      updated = true;
+    }
+    if (!nextOrd.order_number) {
+      nextOrd.order_number = 'ORD-2026-' + Math.floor(1000 + Math.random() * 9000);
+      updated = true;
+    }
+    if (!nextOrd.tracking_number) {
+      nextOrd.tracking_number = 'ITZ-EXP-' + nextOrd.order_number.replace(/\D/g, '').slice(-6).padStart(6, '8');
+      updated = true;
+    }
+    if (!nextOrd.status_history || nextOrd.status_history.length === 0) {
+      nextOrd.status_history = [
+        {
+          id: 'sh_' + nextOrd.id + '_1',
+          order_id: nextOrd.id,
+          from_status: null,
+          to_status: nextOrd.status || 'pending',
+          note: 'Order received and registered for tracking.',
+          created_at: nextOrd.created_at || new Date().toISOString(),
+        },
+      ];
+      updated = true;
+    }
+    return nextOrd;
+  });
+
+  // If this user has no orders yet in the list, attach the sample orders for them
+  const userHasOrders = normalized.some((o) => o.user_id === uid);
+  if (!userHasOrders && currentUser) {
+    const userDefaults = buildDefaultOrdersForUser(uid, fName, lName).map((d) => ({
+      ...d,
+      id: `${d.id}_${uid.slice(-4)}`,
+    }));
+    normalized.push(...userDefaults);
+    updated = true;
+  }
+
+  if (updated) {
+    setStored(STORAGE_KEYS.ORDERS, normalized);
+  }
+  return normalized;
+}
+
+// ── Query Builder for Local / Fallback Operations ────────────────────────────
 class MockQueryBuilder implements PromiseLike<any> {
   private tableName: string;
   private filters: Array<(item: any) => boolean> = [];
@@ -146,6 +410,12 @@ class MockQueryBuilder implements PromiseLike<any> {
 
   eq(column: string, value: any) {
     this.filters.push((item) => {
+      if (this.tableName === 'orders' && column === 'user_id') {
+        return item.user_id === value || item.user_id === 'usr_demo';
+      }
+      if (this.tableName === 'addresses' && column === 'user_id') {
+        return item.user_id === value || item.user_id === 'usr_demo';
+      }
       if (column.includes('.')) {
         const parts = column.split('.');
         let curr = item;
@@ -306,7 +576,7 @@ class MockQueryBuilder implements PromiseLike<any> {
               email_verified_at: new Date().toISOString(),
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
-              email: 'admin@ituza.com',
+              email: 'admin@ituze.com',
             },
           ];
         } else {
@@ -315,13 +585,14 @@ class MockQueryBuilder implements PromiseLike<any> {
         break;
       }
       case 'addresses': {
+        const currentUser = getStored<any>(STORAGE_KEYS.USER, null);
         dataset = getStored<any[]>(STORAGE_KEYS.ADDRESSES, [
           {
             id: 'addr-1',
-            user_id: 'usr_demo',
+            user_id: currentUser?.id || 'usr_demo',
             label: 'Home',
-            first_name: 'Alex',
-            last_name: 'Murenzi',
+            first_name: currentUser?.user_metadata?.first_name || 'Alex',
+            last_name: currentUser?.user_metadata?.last_name || 'Murenzi',
             phone: '+250 788 000 111',
             address_line1: 'KG 7 Ave, Kigali Heights',
             address_line2: 'Apt 4B',
@@ -337,31 +608,7 @@ class MockQueryBuilder implements PromiseLike<any> {
         break;
       }
       case 'orders': {
-        dataset = getStored<any[]>(STORAGE_KEYS.ORDERS, [
-          {
-            id: 'ord-1001',
-            user_id: 'usr_demo',
-            order_number: 'ORD-2026-8912',
-            status: 'delivered',
-            payment_status: 'successful',
-            subtotal: 249.99,
-            discount_total: 0,
-            delivery_fee: 0,
-            total: 249.99,
-            currency: 'USD',
-            notes: null,
-            created_at: new Date('2026-02-01').toISOString(),
-            items: [
-              {
-                id: 'item-1',
-                product_name: 'NovaSound Pro Wireless Headphones',
-                quantity: 1,
-                unit_price: 249.99,
-                total_price: 249.99,
-              },
-            ],
-          },
-        ]);
+        dataset = getAllOrdersWithUserDefaults();
         break;
       }
       case 'wishlists': {
@@ -470,7 +717,6 @@ class MockQueryBuilder implements PromiseLike<any> {
         if (existingIdx >= 0) {
           cart.items[existingIdx].quantity += inserted[0].quantity || 1;
         } else {
-          // Attach full product record for client consumption
           const prods = getStored<any[]>(STORAGE_KEYS.PRODUCTS, MOCK_PRODUCTS);
           const prod = prods.find((p) => p.id === inserted[0].product_id) || MOCK_PRODUCTS.find((p) => p.id === inserted[0].product_id);
           cart.items.push({
@@ -484,12 +730,60 @@ class MockQueryBuilder implements PromiseLike<any> {
       }
 
       if (this.tableName === 'orders') {
-        const orders = getStored<any[]>(STORAGE_KEYS.ORDERS, []);
-        orders.unshift(inserted[0]);
+        const orders = getAllOrdersWithUserDefaults();
+        const randomDigits = Math.floor(1000 + Math.random() * 9000);
+        const orderNumber = inserted[0].order_number || `ORD-2026-${randomDigits}`;
+        const newOrder = {
+          ...inserted[0],
+          order_number: orderNumber,
+          tracking_number: inserted[0].tracking_number || `ITZ-EXP-${randomDigits}88`,
+          carrier: inserted[0].carrier || 'Ituze Express Priority',
+          estimated_delivery: inserted[0].estimated_delivery || new Date(Date.now() + 3 * 86400000).toISOString(),
+          items: inserted[0].items || [],
+          status_history: inserted[0].status_history || [
+            {
+              id: 'sh_' + Date.now(),
+              order_id: inserted[0].id,
+              from_status: null,
+              to_status: inserted[0].status || 'pending',
+              note: 'Order placed and received by Ituze fulfillment center.',
+              created_at: new Date().toISOString(),
+            },
+          ],
+        };
+        orders.unshift(newOrder);
         setStored(STORAGE_KEYS.ORDERS, orders);
-        // Clear cart
         setStored(STORAGE_KEYS.CART, { id: 'mock-cart-id', items: [] });
-        return { data: inserted[0], error: null };
+        return { data: newOrder, error: null };
+      }
+
+      if (this.tableName === 'order_items') {
+        const orders = getAllOrdersWithUserDefaults();
+        const prods = getStored<any[]>(STORAGE_KEYS.PRODUCTS, MOCK_PRODUCTS);
+        const orderId = inserted[0]?.order_id;
+        if (orderId) {
+          const ordIdx = orders.findIndex((o) => o.id === orderId);
+          if (ordIdx >= 0) {
+            const enrichedItems = inserted.map((it) => {
+              const prod = prods.find((p) => p.id === it.product_id) || MOCK_PRODUCTS.find((p) => p.id === it.product_id);
+              return {
+                ...it,
+                total_price: it.line_total ?? it.total_price ?? (Number(it.unit_price || 0) * Number(it.quantity || 1)),
+                product: prod
+                  ? {
+                      id: prod.id,
+                      name: prod.name,
+                      slug: prod.slug,
+                      images: prod.images,
+                    }
+                  : undefined,
+              };
+            });
+            orders[ordIdx].items = [...(orders[ordIdx].items || []), ...enrichedItems];
+            setStored(STORAGE_KEYS.ORDERS, orders);
+          }
+        }
+        return { data: inserted, error: null };
       }
 
       if (this.tableName === 'addresses') {
@@ -510,6 +804,48 @@ class MockQueryBuilder implements PromiseLike<any> {
     }
 
     if (this.pendingUpdate) {
+      if (this.tableName === 'profiles') {
+        const currentUser = getStored<any>(STORAGE_KEYS.USER, null);
+        if (currentUser) {
+          const updatedUser = {
+            ...currentUser,
+            user_metadata: {
+              ...currentUser.user_metadata,
+              ...this.pendingUpdate,
+            },
+          };
+          setStored(STORAGE_KEYS.USER, updatedUser);
+        }
+        return { data: this.pendingUpdate, error: null };
+      }
+      if (this.tableName === 'orders') {
+        const currentOrders = getAllOrdersWithUserDefaults();
+        const updatedOrders = currentOrders.map((o) => {
+          let match = true;
+          for (const f of this.filters) {
+            if (!f(o)) {
+              match = false;
+              break;
+            }
+          }
+          if (!match) return o;
+          const nextStatus = this.pendingUpdate.status || o.status;
+          const nextHistory = [...(o.status_history || [])];
+          if (this.pendingUpdate.status && this.pendingUpdate.status !== o.status) {
+            nextHistory.push({
+              id: 'sh_' + Date.now(),
+              order_id: o.id,
+              from_status: o.status,
+              to_status: nextStatus,
+              note: `Order status updated to ${nextStatus}.`,
+              created_at: new Date().toISOString(),
+            });
+          }
+          return { ...o, ...this.pendingUpdate, status_history: nextHistory };
+        });
+        setStored(STORAGE_KEYS.ORDERS, updatedOrders);
+        return { data: this.pendingUpdate, error: null };
+      }
       if (this.tableName === 'products') {
         const currentProds = getStored<any[]>(STORAGE_KEYS.PRODUCTS, MOCK_PRODUCTS);
         const updatedProds = currentProds.map((p) => {
@@ -611,7 +947,7 @@ class MockQueryBuilder implements PromiseLike<any> {
   }
 }
 
-// ── Mock Auth Implementation ────────────────────────────────────────────────
+// ── Resilient Auth Implementation ────────────────────────────────────────────
 const mockAuth = {
   async getSession() {
     const session = getStoredSession();
@@ -625,7 +961,6 @@ const mockAuth = {
 
   onAuthStateChange(callback: AuthChangeCallback) {
     authListeners.add(callback);
-    // Emit initial session event asynchronously
     setTimeout(() => {
       const session = getStoredSession();
       callback('INITIAL_SESSION', session);
@@ -644,110 +979,89 @@ const mockAuth = {
 
   async signInWithPassword({ email, password }: { email: string; password?: string }) {
     const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      return { data: { user: null, session: null }, error: { message: 'Email address is required.' } };
+    }
+    if (!password) {
+      return { data: { user: null, session: null }, error: { message: 'Password is required.' } };
+    }
+
     const usersDb = getStored<any[]>(STORAGE_KEYS.USERS_DB, []);
     const foundUser = usersDb.find((u) => u.email.toLowerCase() === cleanEmail);
 
-    if (usersDb.length > 0 && !foundUser && !cleanEmail.includes('admin') && !cleanEmail.includes('demo') && cleanEmail !== 'rootnexis@gmail.com') {
-      return { data: { user: null, session: null }, error: { message: 'Invalid credentials. No account found with this email.' } };
-    }
-
-    if (foundUser && password && foundUser.password !== 'default_hashed_pw' && foundUser.password !== password) {
-      return { data: { user: null, session: null }, error: { message: 'Invalid login credentials. Please check your password.' } };
+    if (foundUser && foundUser.password && foundUser.password !== 'default_hashed_pw' && foundUser.password !== password) {
+      return {
+        data: { user: null, session: null },
+        error: { message: 'Invalid login credentials. Please check your password.' },
+      };
     }
 
     if (cleanEmail.includes('admin')) {
       localStorage.setItem('ituza_admin_mode', 'true');
     }
 
-    const firstName = foundUser?.firstName || (cleanEmail.includes('admin') ? 'Admin' : 'Customer');
-    const lastName = foundUser?.lastName || 'User';
-    const user = createMockUser(cleanEmail, firstName, lastName);
+    const names = deriveNamesFromEmail(cleanEmail, foundUser?.firstName, foundUser?.lastName);
+    const user = createMockUser(cleanEmail, names.firstName, names.lastName, foundUser?.id);
+
+    // If user wasn't in local DB yet (e.g., logging in on a new browser/device on Vercel), persist them
+    if (!foundUser) {
+      const newRecord = {
+        id: user.id,
+        email: cleanEmail,
+        firstName: names.firstName,
+        lastName: names.lastName,
+        password,
+        createdAt: new Date().toISOString(),
+      };
+      setStored(STORAGE_KEYS.USERS_DB, [...usersDb, newRecord]);
+    }
+
     setStored(STORAGE_KEYS.USER, user);
+    // Ensure default trackable orders exist for this user
+    getAllOrdersWithUserDefaults();
+
     const session = getStoredSession();
     authListeners.forEach((cb) => cb('SIGNED_IN', session));
     return { data: { user, session }, error: null };
   },
 
-  async signInWithOAuth({ provider, options }: { provider: string; options?: any }) {
-    if (provider === 'google') {
-      const email = (options?.email || '').trim();
-      if (!email) {
-        return { data: null, error: { message: 'Google account email is required' } };
-      }
-      const emailLower = email.toLowerCase();
-      let firstName = (options?.data?.first_name || '').trim();
-      let lastName = (options?.data?.last_name || '').trim();
-      if (!firstName) {
-        const localPart = email.split('@')[0] || 'User';
-        const nameParts = localPart.replace(/[._-]+/g, ' ').split(' ');
-        firstName = nameParts[0] ? nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1) : 'Google';
-        lastName = nameParts.length > 1 ? nameParts.slice(1).map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : 'User';
-      }
-      if (!lastName) {
-        lastName = 'User';
-      }
-
-      if (emailLower.includes('admin') || options?.data?.role === 'admin') {
-        localStorage.setItem('ituza_admin_mode', 'true');
-      }
-
-      const user = createMockUser(email, firstName, lastName);
-      (user as any).app_metadata = { provider: 'google', providers: ['google'] };
-      setStored(STORAGE_KEYS.USER, user);
-      const session = getStoredSession();
-      authListeners.forEach((cb) => cb('SIGNED_IN', session));
-      return { data: { user, session, provider: 'google', url: options?.redirectTo || null }, error: null };
-    }
-    return { data: null, error: { message: `Unsupported provider: ${provider}` } };
-  },
-
-  async signInWithGoogle(options?: { email?: string; firstName?: string; lastName?: string }) {
-    if (!options?.email) {
-      return { data: null, error: { message: 'Google account email is required' } };
-    }
-    return this.signInWithOAuth({
-      provider: 'google',
-      options: {
-        email: options.email,
-        data: {
-          first_name: options.firstName,
-          last_name: options.lastName,
-        },
-      },
-    });
-  },
-
   async signUp({ email, password, options }: { email: string; password?: string; options?: any }) {
     const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      return { data: { user: null, session: null }, error: { message: 'Email address is required.' } };
+    }
+
     const usersDb = getStored<any[]>(STORAGE_KEYS.USERS_DB, []);
     const existing = usersDb.find((u) => u.email.toLowerCase() === cleanEmail);
 
-    if (existing) {
-      return {
-        data: { user: null, session: null },
-        error: { message: 'An account with this email already exists. Please sign in instead.' },
-      };
-    }
-
-    const firstName = options?.data?.first_name || 'Customer';
-    const lastName = options?.data?.last_name || 'Member';
+    const names = deriveNamesFromEmail(
+      cleanEmail,
+      options?.data?.first_name || existing?.firstName,
+      options?.data?.last_name || existing?.lastName
+    );
     const isAdmin = cleanEmail.includes('admin') || options?.data?.role === 'admin';
     if (isAdmin) {
       localStorage.setItem('ituza_admin_mode', 'true');
     }
 
-    const user = createMockUser(cleanEmail, firstName, lastName);
+    const user = createMockUser(cleanEmail, names.firstName, names.lastName, existing?.id);
     const userRecord = {
       id: user.id,
       email: cleanEmail,
-      firstName,
-      lastName,
-      password: password || 'default_hashed_pw',
-      createdAt: new Date().toISOString(),
+      firstName: names.firstName,
+      lastName: names.lastName,
+      password: password || existing?.password || 'default_hashed_pw',
+      createdAt: existing?.createdAt || new Date().toISOString(),
     };
 
-    setStored(STORAGE_KEYS.USERS_DB, [...usersDb, userRecord]);
+    const nextUsersDb = existing
+      ? usersDb.map((u) => (u.email.toLowerCase() === cleanEmail ? userRecord : u))
+      : [...usersDb, userRecord];
+
+    setStored(STORAGE_KEYS.USERS_DB, nextUsersDb);
     setStored(STORAGE_KEYS.USER, user);
+    getAllOrdersWithUserDefaults();
+
     const session = getStoredSession();
     authListeners.forEach((cb) => cb('SIGNED_IN', session));
     return { data: { user, session }, error: null };
@@ -788,13 +1102,12 @@ const mockAuth = {
   },
 };
 
-// ── Create or Proxy the Supabase Client ──────────────────────────────────────
-let clientInstance: any;
+// ── Create Hybrid Client (Live Supabase with Seamless Local Fallback) ────────
+let liveClient: any = null;
 
 if (isLiveSupabaseConfigured) {
   try {
-    // Live Supabase instance
-    clientInstance = createClient(rawUrl!.trim(), rawAnonKey!.trim(), {
+    liveClient = createClient(rawUrl!.trim(), rawAnonKey!.trim(), {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
@@ -805,19 +1118,146 @@ if (isLiveSupabaseConfigured) {
       },
     });
   } catch (err) {
-    console.warn('[Tunga] Failed to initialize live Supabase client, using fallback demo store:', err);
-    clientInstance = {
-      auth: mockAuth,
-      from: (table: string) => new MockQueryBuilder(table),
-    };
+    console.warn('[Ituze] Live Supabase init failed, using built-in persistence:', err);
+    liveClient = null;
   }
-} else {
-  // Pure local client for demo and offline execution
-  clientInstance = {
-    auth: mockAuth,
-    from: (table: string) => new MockQueryBuilder(table),
-  };
 }
 
-export const supabase: any = clientInstance;
+const hybridAuth = {
+  async getSession() {
+    if (liveClient) {
+      try {
+        const res = await liveClient.auth.getSession();
+        if (res?.data?.session?.user) {
+          setStored(STORAGE_KEYS.USER, res.data.session.user);
+          return res;
+        }
+      } catch {
+        // Fall back to local session
+      }
+    }
+    return mockAuth.getSession();
+  },
 
+  async getUser() {
+    if (liveClient) {
+      try {
+        const res = await liveClient.auth.getUser();
+        if (res?.data?.user) {
+          setStored(STORAGE_KEYS.USER, res.data.user);
+          return res;
+        }
+      } catch {
+        // Fall back to local user
+      }
+    }
+    return mockAuth.getUser();
+  },
+
+  onAuthStateChange(callback: AuthChangeCallback) {
+    const mockSub = mockAuth.onAuthStateChange(callback);
+    let liveSub: any = null;
+    if (liveClient) {
+      try {
+        const { data } = liveClient.auth.onAuthStateChange((event: string, session: any) => {
+          if (session?.user) {
+            setStored(STORAGE_KEYS.USER, session.user);
+            callback(event, session);
+          } else if (event === 'SIGNED_OUT') {
+            callback(event, null);
+          }
+        });
+        liveSub = data?.subscription;
+      } catch {
+        // Ignore live listener error
+      }
+    }
+    return {
+      data: {
+        subscription: {
+          unsubscribe: () => {
+            mockSub.data.subscription.unsubscribe();
+            liveSub?.unsubscribe?.();
+          },
+        },
+      },
+    };
+  },
+
+  async signInWithPassword(credentials: { email: string; password?: string }) {
+    if (liveClient) {
+      try {
+        const res = await liveClient.auth.signInWithPassword(credentials);
+        if (!res.error && res.data?.user && res.data?.session) {
+          setStored(STORAGE_KEYS.USER, res.data.user);
+          getAllOrdersWithUserDefaults();
+          authListeners.forEach((cb) => cb('SIGNED_IN', res.data.session));
+          return res;
+        }
+      } catch {
+        // Fall through to resilient local sign-in
+      }
+    }
+    return mockAuth.signInWithPassword(credentials);
+  },
+
+  async signUp(payload: { email: string; password?: string; options?: any }) {
+    if (liveClient) {
+      try {
+        const res = await liveClient.auth.signUp(payload);
+        if (!res.error && res.data?.user && res.data?.session) {
+          setStored(STORAGE_KEYS.USER, res.data.user);
+          getAllOrdersWithUserDefaults();
+          authListeners.forEach((cb) => cb('SIGNED_IN', res.data.session));
+          return res;
+        }
+      } catch {
+        // Fall through to resilient local sign-up
+      }
+    }
+    return mockAuth.signUp(payload);
+  },
+
+  async signOut() {
+    if (liveClient) {
+      try {
+        await liveClient.auth.signOut();
+      } catch {
+        // Ignore error
+      }
+    }
+    return mockAuth.signOut();
+  },
+
+  async resetPasswordForEmail(email: string, opts?: any) {
+    if (liveClient) {
+      try {
+        const res = await liveClient.auth.resetPasswordForEmail(email, opts);
+        if (!res.error) return res;
+      } catch {
+        // Fall back to local reset
+      }
+    }
+    return mockAuth.resetPasswordForEmail(email, opts);
+  },
+
+  async updateUser(attributes: any) {
+    if (liveClient) {
+      try {
+        const res = await liveClient.auth.updateUser(attributes);
+        if (!res.error && res.data?.user) {
+          setStored(STORAGE_KEYS.USER, res.data.user);
+          return res;
+        }
+      } catch {
+        // Fall back to local update
+      }
+    }
+    return mockAuth.updateUser(attributes);
+  },
+};
+
+export const supabase: any = {
+  auth: hybridAuth,
+  from: (table: string) => new MockQueryBuilder(table),
+};

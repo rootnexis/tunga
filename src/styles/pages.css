@@ -2755,6 +2755,8 @@
   font-size: 0.75rem;
   color: var(--slate-400);
   font-weight: 500;
+}
+
 /* Notion/Linear Segmented Tab Switcher */
 .auth-segmented-switch {
   display: flex;

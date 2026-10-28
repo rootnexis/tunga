@@ -50,7 +50,7 @@ function renderInlineContent(text: string): React.ReactNode[] {
     const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (linkMatch) {
       const [, label, href] = linkMatch;
-      const isInternal = href.startsWith('/') || href.includes('localhost:5173') || href.includes('tunga.store');
+      const isInternal = href.startsWith('/') || href.includes('localhost:5173') || href.includes('ituze.store') || href.includes('tunga.store');
       if (isInternal) {
         const localPath = href.replace(/^https?:\/\/[^/]+/, '');
         return (
@@ -321,7 +321,7 @@ export function ChatWidget() {
   });
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    const saved = sessionStorage.getItem(`ituze_chat_${lang}`);
+    const saved = sessionStorage.getItem(`ituze_chat_v2_${lang}`);
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -374,7 +374,7 @@ export function ChatWidget() {
 
   // Persist messages in session storage per language
   useEffect(() => {
-    sessionStorage.setItem(`ituze_chat_${lang}`, JSON.stringify(messages));
+    sessionStorage.setItem(`ituze_chat_v2_${lang}`, JSON.stringify(messages));
   }, [messages, lang]);
 
   // Auto-scroll to latest message
@@ -489,7 +489,7 @@ export function ChatWidget() {
 
   const handleReset = () => {
     setMessages([getInitialMessage()]);
-    sessionStorage.removeItem(`ituze_chat_${lang}`);
+    sessionStorage.removeItem(`ituze_chat_v2_${lang}`);
   };
 
   const handleCopyMessage = (id: string, text: string) => {
@@ -871,7 +871,7 @@ export function ChatWidget() {
                   <span className="chatbot-typing-icon">
                     <Sparkles size={12} />
                   </span>
-                  <span className="chatbot-typing-label">Tunga AI is typing</span>
+                  <span className="chatbot-typing-label">Ituze AI is typing</span>
                   <span className="chatbot-dot" />
                   <span className="chatbot-dot" />
                   <span className="chatbot-dot" />

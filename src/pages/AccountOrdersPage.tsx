@@ -94,7 +94,11 @@ export default function AccountOrdersPage() {
                       <td style={{ color: 'var(--color-text-secondary)' }}>{order.items?.length ?? 0} item(s)</td>
                       <td><span className={`badge ${ORDER_STATUS_COLORS[order.status]}`}>{ORDER_STATUS_LABELS[order.status]}</span></td>
                       <td style={{ fontWeight: 'var(--font-semibold)' }}>{formatCurrency(order.total, order.currency)}</td>
-                      <td><Link to={`/account/orders/${order.id}`} className="btn btn-secondary btn-sm">Details</Link></td>
+                      <td style={{ textAlign: 'right' }}>
+                        <Link to={`/account/orders/${order.id}`} className="btn btn-primary btn-sm">
+                          Track & Details
+                        </Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

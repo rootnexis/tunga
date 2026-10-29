@@ -4,6 +4,7 @@ import { Zap, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/contexts/ToastContext';
 import { PageSeo } from '@/components/shared/PageSeo';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 
 export default function ForgotPasswordPage() {
   const { success, error: toastError } = useToast();
@@ -34,14 +35,7 @@ export default function ForgotPasswordPage() {
         <div className="auth-panel">
           <div className="auth-card">
             <Link to="/" className="auth-logo">
-              <div className="auth-logo-icon" style={{ background: 'transparent', boxShadow: 'none', padding: 0, overflow: 'hidden' }}>
-                <img
-                  src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
-                  alt="Ituze"
-                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: 'inherit' }}
-                />
-              </div>
-              Ituze
+              <BrandLogo variant="light" size="md" />
             </Link>
 
             {sent ? (

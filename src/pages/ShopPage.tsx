@@ -70,11 +70,14 @@ export default function ShopPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['products', { categorySlug, page, sort, search, minPrice, maxPrice, inStockOnly, featuredOnly, categoryId: activeCategory?.id }],
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async () => {
       let q = supabase
         .from('products')
         .select('*, images:product_images(*), category:categories(id,name,slug), brand:brands(id,name,slug), inventory(quantity_available)', { count: 'exact' })
-        .eq('status', 'active');
+        .eq('is_active', true)
+        .eq('is_archived', false);
 
       if (activeCategory?.id) q = q.eq('category_id', activeCategory.id);
       if (categorySlug === 'featured' || featuredOnly) q = q.eq('is_featured', true);

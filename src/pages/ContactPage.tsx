@@ -43,28 +43,42 @@ export default function ContactPage() {
               <div className="contact-info-icon"><Mail size={20} /></div>
               <div>
                 <p className="contact-info-label">{t.contact.email}</p>
-                <p className="contact-info-value">hello@storefront.com</p>
+                <a
+                  href="mailto:niyodieudonne62@gmail.com?subject=Inquiry%20from%20Ituze%20Store"
+                  className="contact-info-value"
+                  style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 600 }}
+                >
+                  niyodieudonne62@gmail.com
+                </a>
               </div>
             </div>
             <div className="contact-info-item">
               <div className="contact-info-icon"><Phone size={20} /></div>
               <div>
-                <p className="contact-info-label">Phone</p>
-                <p className="contact-info-value">+1 (555) 123-4567</p>
+                <p className="contact-info-label">Phone / WhatsApp Direct</p>
+                <a
+                  href="https://wa.me/250788000000?text=Hello%20Ituze%20Store%20Owner%2C%20I%20would%20like%20assistance%20with%20a%20question%20on%20Ituze."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="contact-info-value"
+                  style={{ color: '#059669', textDecoration: 'none', fontWeight: 600 }}
+                >
+                  +250 788 000 000 (Chat on WhatsApp)
+                </a>
               </div>
             </div>
             <div className="contact-info-item">
               <div className="contact-info-icon"><MapPin size={20} /></div>
               <div>
                 <p className="contact-info-label">Address</p>
-                <p className="contact-info-value">123 Commerce St, New York, NY 10001</p>
+                <p className="contact-info-value">Kigali, Rwanda • Worldwide Delivery</p>
               </div>
             </div>
             <div className="contact-info-item">
               <div className="contact-info-icon"><Clock size={20} /></div>
               <div>
                 <p className="contact-info-label">Business Hours</p>
-                <p className="contact-info-value">Mon–Fri, 9am–6pm EST</p>
+                <p className="contact-info-value">Mon–Sat, 8:00 AM – 8:00 PM CAT</p>
               </div>
             </div>
           </div>

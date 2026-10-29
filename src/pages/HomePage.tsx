@@ -56,17 +56,21 @@ export default function HomePage() {
     supabase
       .from('products')
       .select(`
-        id, name, slug, base_price, sale_price, currency, is_active, is_featured, is_archived,
+        id, name, slug, base_price, sale_price, currency, is_active, is_featured, is_archived, created_at,
         images:product_images(id, url, alt_text, is_primary, sort_order),
         inventory(quantity_available, low_stock_threshold),
         category:categories(id, name, slug)
       `)
-      .eq('is_featured', true)
       .eq('is_active', true)
       .eq('is_archived', false)
-      .limit(8)
+      .order('created_at', { ascending: false })
       .then(({ data }: any) => {
-        setFeatured((data as unknown as Product[]) ?? []);
+        const list = ((data as unknown as Product[]) ?? []).sort((a, b) => {
+          if (a.is_featured && !b.is_featured) return -1;
+          if (!a.is_featured && b.is_featured) return 1;
+          return 0;
+        });
+        setFeatured(list.slice(0, 8));
         setIsLoading(false);
       })
       .catch(() => {

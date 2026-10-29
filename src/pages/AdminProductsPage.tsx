@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Plus, Archive, Eye, Pencil } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { queryClient } from '@/lib/queryClient';
 import { useToast } from '@/contexts/ToastContext';
 import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
@@ -52,6 +53,7 @@ export default function AdminProductsPage() {
   const handleArchive = async () => {
     if (!archiving) return;
     await supabase.from('products').update({ is_archived: !archiving.is_archived }).eq('id', archiving.id);
+    await queryClient.invalidateQueries({ queryKey: ['products'] });
     success(archiving.is_archived ? tp.productRestored : tp.productArchived);
     setArchiving(null);
     load();

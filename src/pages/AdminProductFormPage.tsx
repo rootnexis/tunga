@@ -4,6 +4,7 @@ import {
   ArrowLeft, Plus, Trash2, GripVertical, Star, Upload, X, Loader2,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { queryClient } from '@/lib/queryClient';
 import { useToast } from '@/contexts/ToastContext';
 import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
@@ -64,10 +65,10 @@ const EMPTY_FORM: FormState = {
   weight_kg: '', dim_l: '', dim_w: '', dim_h: '',
   tags: '', category_id: '', brand_id: '',
   is_active: true, is_featured: false, is_archived: false,
-  quantity_available: '0', low_stock_threshold: '5',
+  quantity_available: '25', low_stock_threshold: '5',
 };
 
-const CURRENCIES = ['RWF', 'USD', 'EUR', 'GBP', 'MAD', 'SAR', 'AED', 'CAD', 'AUD'];
+const CURRENCIES = ['RWF'];
 
 function newVariant(): VariantRow {
   return { name: '', sku: '', price_modifier: '0', attributes: '{}', is_active: true, _key: crypto.randomUUID() };
@@ -132,7 +133,7 @@ export default function AdminProductFormPage() {
         description: p.description ?? '',
         base_price: String(p.base_price ?? ''),
         sale_price: p.sale_price != null ? String(p.sale_price) : '',
-        currency: p.currency ?? 'USD',
+        currency: 'RWF',
         weight_kg: p.weight_kg != null ? String(p.weight_kg) : '',
         dim_l: p.dimensions_cm?.l != null ? String(p.dimensions_cm.l) : '',
         dim_w: p.dimensions_cm?.w != null ? String(p.dimensions_cm.w) : '',
@@ -334,6 +335,8 @@ export default function AdminProductFormPage() {
       }
     }
 
+    await queryClient.invalidateQueries({ queryKey: ['products'] });
+    await queryClient.invalidateQueries({ queryKey: ['categories'] });
     success(isEdit ? tf.productUpdated : tf.productCreated);
     navigate('/admin/products');
   };

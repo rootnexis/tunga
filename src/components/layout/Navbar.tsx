@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useT } from '@/contexts/LanguageContext';
 import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 import { cn } from '@/utils/formatters';
 
 export function Navbar() {
@@ -83,14 +84,7 @@ export function Navbar() {
         <div className="container navbar-inner">
           {/* ── Logo ── */}
           <Link to="/" className="navbar-logo" aria-label="Go to homepage">
-            <div className="navbar-logo-icon" style={{ background: 'transparent', boxShadow: 'none', padding: 0, overflow: 'hidden' }}>
-              <img
-                src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
-                alt={t.siteName}
-                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: 'inherit' }}
-              />
-            </div>
-            <span className="navbar-logo-text">{t.siteName}</span>
+            <BrandLogo variant="light" size="md" />
           </Link>
 
           {/* ── Desktop Nav Links with Modern Icons ── */}

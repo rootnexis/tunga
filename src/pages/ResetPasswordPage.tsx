@@ -4,6 +4,7 @@ import { Lock, Eye, EyeOff, CheckCircle2, ArrowRight, ShieldCheck, Zap } from 'l
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/contexts/ToastContext';
 import { PageSeo } from '@/components/shared/PageSeo';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 
 export default function ResetPasswordPage() {
   const { success, error: toastError } = useToast();
@@ -73,14 +74,7 @@ export default function ResetPasswordPage() {
             {/* Top Brand Header */}
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
               <Link to="/" className="login-brand-header" style={{ justifyContent: 'center', margin: '0 auto 12px' }}>
-                <div className="login-brand-icon" style={{ background: 'transparent', boxShadow: 'none', padding: 0, overflow: 'hidden' }}>
-                  <img
-                    src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
-                    alt="Ituze"
-                    style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: 'inherit' }}
-                  />
-                </div>
-                <span className="login-brand-name">Ituze</span>
+                <BrandLogo variant="light" size="md" />
               </Link>
 
               <h1 className="login-form-title" style={{ fontSize: '1.4rem' }}>

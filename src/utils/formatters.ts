@@ -1,13 +1,10 @@
 import type { OrderStatus, PaymentStatus, TicketStatus } from '@/types';
 
-// ── Currency formatting ──
-export function formatCurrency(amount: number, currency = 'RWF'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+// ── Currency formatting (Always RWF across the store) ──
+export function formatCurrency(amount: number, _currency = 'RWF'): string {
+  const numericAmount = Number(amount);
+  const safeAmount = Number.isFinite(numericAmount) ? Math.round(numericAmount) : 0;
+  return `${safeAmount.toLocaleString('en-US')} RWF`;
 }
 
 // ── Date formatting ──

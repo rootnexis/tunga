@@ -26,11 +26,30 @@
 
 /* Logo */
 .navbar-logo {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--space-2-5);
   flex-shrink: 0;
   text-decoration: none;
+  padding: 2px 0;
+}
+.ituze-brand-lockup {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ituze-brand-icon-shell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  filter: drop-shadow(0 4px 12px rgba(59, 130, 246, 0.28));
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), filter 0.25s ease;
+}
+.navbar-logo:hover .ituze-brand-icon-shell,
+.footer-logo:hover .ituze-brand-icon-shell,
+.admin-logo:hover .ituze-brand-icon-shell,
+.login-brand-header:hover .ituze-brand-icon-shell {
+  transform: scale(1.06) rotate(-3deg);
+  filter: drop-shadow(0 6px 16px rgba(56, 189, 248, 0.45));
 }
 .navbar-logo-icon {
   width: 36px;

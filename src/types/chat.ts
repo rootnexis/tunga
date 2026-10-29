@@ -7,8 +7,13 @@ export interface ProductSummary {
   currency: string;
   image_url?: string;
   category?: string;
+  category_slug?: string;
+  brand?: string;
   average_rating?: number;
   short_description?: string;
+  description?: string;
+  tags?: string[];
+  specifications?: Record<string, string>;
 }
 
 export interface OrderSummary {
@@ -22,6 +27,14 @@ export interface OrderSummary {
   items_summary?: string[];
 }
 
+export interface ChatContactActions {
+  whatsappUrl: string;
+  emailUrl: string;
+  emailAddress: string;
+  phoneDisplay: string;
+  contactPageUrl: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -29,4 +42,5 @@ export interface ChatMessage {
   timestamp: string;
   products?: ProductSummary[];
   orders?: OrderSummary[];
+  contactActions?: ChatContactActions;
 }

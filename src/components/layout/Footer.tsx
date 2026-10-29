@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Zap, Mail, Phone, MapPin } from 'lucide-react';
 import { useT } from '@/contexts/LanguageContext';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 
 // Inline SVG social icons
 const FacebookIcon = () => (
@@ -85,14 +86,7 @@ export function Footer() {
           {/* Brand */}
           <div className="footer-brand">
             <Link to="/" className="footer-logo" aria-label="Home">
-              <div className="footer-logo-icon" style={{ background: 'transparent', boxShadow: 'none', padding: 0, overflow: 'hidden' }}>
-                <img
-                  src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
-                  alt={t.siteName}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: 'inherit' }}
-                />
-              </div>
-              <span>{t.siteName}</span>
+              <BrandLogo variant="dark" size="md" />
             </Link>
             <p className="footer-tagline">
               {t.footer.tagline}

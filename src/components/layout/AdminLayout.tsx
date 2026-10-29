@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useT, LANGUAGES } from '@/contexts/LanguageContext';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 import { cn } from '@/utils/formatters';
 import type { LangCode } from '@/i18n/types';
 
@@ -57,14 +58,7 @@ export function AdminLayout() {
       <aside className={cn('admin-sidebar', sidebarOpen && 'admin-sidebar-open')}>
         <div className="admin-sidebar-header">
           <Link to="/" className="admin-logo" style={{ textDecoration: 'none', color: 'inherit' }} title={ta.storefront}>
-            <div className="admin-logo-icon" style={{ background: 'transparent', padding: 0, overflow: 'hidden' }}>
-              <img
-                src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
-                alt={t.siteName}
-                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: 'inherit' }}
-              />
-            </div>
-            <span className="admin-logo-text">{t.siteName}</span>
+            <BrandLogo variant="dark" size="sm" />
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             <span className="admin-badge">{ta.adminBadge}</span>
@@ -198,12 +192,8 @@ export function AdminLayout() {
           </button>
           <div className="admin-topbar-logo">
             <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'inherit', textDecoration: 'none' }}>
-              <img
-                src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
-                alt={t.siteName}
-                style={{ width: 24, height: 24, borderRadius: 6, objectFit: 'contain', flexShrink: 0 }}
-              />
-              <span>{t.siteName} {ta.adminBadge}</span>
+              <BrandLogo variant="light" size="sm" />
+              <span className="admin-badge" style={{ marginLeft: 2 }}>{ta.adminBadge}</span>
             </Link>
           </div>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>

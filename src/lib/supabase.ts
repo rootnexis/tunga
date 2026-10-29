@@ -155,12 +155,12 @@ function buildDefaultOrdersForUser(userId: string, firstName = 'Valued', lastNam
       tracking_number: 'ITZ-EXP-891204',
       carrier: 'Ituze Express Priority',
       estimated_delivery: new Date(Date.now() + 2 * 86400000).toISOString(),
-      subtotal: 249.99,
+      subtotal: 249000,
       discount_amount: 0,
       delivery_fee: 0,
       tax_amount: 0,
-      total: 249.99,
-      currency: 'USD',
+      total: 249000,
+      currency: 'RWF',
       notes: 'Leave package with reception desk upon arrival.',
       created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
       shipping_address: {
@@ -184,10 +184,10 @@ function buildDefaultOrdersForUser(userId: string, firstName = 'Valued', lastNam
           variant_name: 'Midnight Black',
           sku: 'NS-PRO-BLK-01',
           quantity: 1,
-          unit_price: 249.99,
+          unit_price: 249000,
           discount_amount: 0,
-          line_total: 249.99,
-          total_price: 249.99,
+          line_total: 249000,
+          total_price: 249000,
           product: {
             id: 'p0000000-0000-0000-0000-000000000001',
             name: 'NovaSound Pro Wireless Headphones',
@@ -245,12 +245,12 @@ function buildDefaultOrdersForUser(userId: string, firstName = 'Valued', lastNam
       tracking_number: 'ITZ-EXP-742019',
       carrier: 'Ituze Standard Courier',
       estimated_delivery: new Date(Date.now() - 5 * 86400000).toISOString(),
-      subtotal: 129.99,
+      subtotal: 129000,
       discount_amount: 0,
       delivery_fee: 0,
       tax_amount: 0,
-      total: 129.99,
-      currency: 'USD',
+      total: 129000,
+      currency: 'RWF',
       notes: null,
       created_at: new Date(Date.now() - 9 * 86400000).toISOString(),
       shipping_address: {
@@ -274,10 +274,10 @@ function buildDefaultOrdersForUser(userId: string, firstName = 'Valued', lastNam
           variant_name: 'Pearl White',
           sku: 'AP-TWS-WHT-05',
           quantity: 1,
-          unit_price: 129.99,
+          unit_price: 129000,
           discount_amount: 0,
-          line_total: 129.99,
-          total_price: 129.99,
+          line_total: 129000,
+          total_price: 129000,
           product: {
             id: 'p0000000-0000-0000-0000-000000000005',
             name: 'Aura Pods True Wireless Earbuds',
@@ -329,6 +329,106 @@ function buildDefaultOrdersForUser(userId: string, firstName = 'Valued', lastNam
   ];
 }
 
+/**
+ * Retrieve and normalize all catalog products (both default seed products and any admin-added/edited products),
+ * ensuring currency is RWF and relational fields (category, brand, images, inventory) are always populated.
+ */
+function getNormalizedProducts(): any[] {
+  const stored = getStored<any[] | null>(STORAGE_KEYS.PRODUCTS, null);
+  if (!stored || !Array.isArray(stored) || stored.length === 0) {
+    setStored(STORAGE_KEYS.PRODUCTS, MOCK_PRODUCTS);
+    return [...MOCK_PRODUCTS];
+  }
+
+  let changed = false;
+  const normalized = stored.map((p) => {
+    const seedMatch = MOCK_PRODUCTS.find((mp) => mp.id === p.id);
+    let nextP = { ...p };
+
+    // Upgrade legacy USD seed prices to RWF while preserving any admin-added or custom-priced products
+    if (seedMatch && nextP.currency === 'USD' && Number(nextP.base_price) < 1000) {
+      nextP.base_price = seedMatch.base_price;
+      nextP.sale_price = seedMatch.sale_price;
+      nextP.currency = 'RWF';
+      changed = true;
+    } else if (nextP.currency !== 'RWF') {
+      nextP.currency = 'RWF';
+      changed = true;
+    }
+
+    if (nextP.is_active === undefined || nextP.is_active === null) {
+      nextP.is_active = true;
+      changed = true;
+    }
+    if (nextP.is_archived === undefined || nextP.is_archived === null) {
+      nextP.is_archived = false;
+      changed = true;
+    }
+    if (!nextP.slug) {
+      nextP.slug = (nextP.name || nextP.id || 'product')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      changed = true;
+    }
+
+    // Ensure category relation is attached
+    if (nextP.category_id && (!nextP.category || nextP.category.id !== nextP.category_id)) {
+      const foundCat = MOCK_CATEGORIES.find((c) => c.id === nextP.category_id);
+      if (foundCat) {
+        nextP.category = foundCat;
+        changed = true;
+      }
+    } else if (!nextP.category) {
+      nextP.category = MOCK_CATEGORIES[0];
+      changed = true;
+    }
+
+    // Ensure brand relation is attached
+    if (nextP.brand_id && (!nextP.brand || nextP.brand.id !== nextP.brand_id)) {
+      const foundBrand = MOCK_BRANDS.find((b) => b.id === nextP.brand_id);
+      if (foundBrand) {
+        nextP.brand = foundBrand;
+        changed = true;
+      }
+    }
+
+    // Ensure images array is populated
+    if (!Array.isArray(nextP.images) || nextP.images.length === 0) {
+      nextP.images = [
+        {
+          id: 'img_' + nextP.id,
+          product_id: nextP.id,
+          url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
+          alt_text: nextP.name || 'Product image',
+          is_primary: true,
+          sort_order: 0,
+        },
+      ];
+      changed = true;
+    }
+
+    // Ensure inventory object is populated
+    if (!nextP.inventory) {
+      nextP.inventory = {
+        id: 'inv_' + nextP.id,
+        product_id: nextP.id,
+        quantity_available: 25,
+        quantity_reserved: 0,
+        low_stock_threshold: 5,
+      };
+      changed = true;
+    }
+
+    return nextP;
+  });
+
+  if (changed) {
+    setStored(STORAGE_KEYS.PRODUCTS, normalized);
+  }
+  return normalized;
+}
+
 function getAllOrdersWithUserDefaults(): any[] {
   const currentUser = getStored<any>(STORAGE_KEYS.USER, null);
   const uid = currentUser?.id || 'usr_demo';
@@ -342,12 +442,28 @@ function getAllOrdersWithUserDefaults(): any[] {
     return defaults;
   }
 
-  // Ensure demo orders are accessible to the currently signed-in user so dashboard tracking works out of the box
+  // Ensure demo orders are accessible to the currently signed-in user and use RWF
   let updated = false;
   const normalized = rawOrders.map((ord) => {
     let nextOrd = { ...ord };
     if (nextOrd.user_id === 'usr_demo' && uid !== 'usr_demo') {
       nextOrd.user_id = uid;
+      updated = true;
+    }
+    if (nextOrd.currency !== 'RWF') {
+      if (nextOrd.currency === 'USD' && Number(nextOrd.total) < 1000) {
+        nextOrd.subtotal = Math.round(Number(nextOrd.subtotal || 0) * 1000);
+        nextOrd.total = Math.round(Number(nextOrd.total || 0) * 1000);
+        if (Array.isArray(nextOrd.items)) {
+          nextOrd.items = nextOrd.items.map((it: any) => ({
+            ...it,
+            unit_price: Number(it.unit_price) < 1000 ? Math.round(Number(it.unit_price) * 1000) : it.unit_price,
+            line_total: Number(it.line_total) < 1000 ? Math.round(Number(it.line_total) * 1000) : it.line_total,
+            total_price: Number(it.total_price) < 1000 ? Math.round(Number(it.total_price) * 1000) : it.total_price,
+          }));
+        }
+      }
+      nextOrd.currency = 'RWF';
       updated = true;
     }
     if (!nextOrd.order_number) {
@@ -415,6 +531,16 @@ class MockQueryBuilder implements PromiseLike<any> {
 
   eq(column: string, value: any) {
     this.filters.push((item) => {
+      if (this.tableName === 'products' && column === 'status') {
+        if (value === 'active') return item.is_active !== false && !item.is_archived;
+        return true;
+      }
+      if (this.tableName === 'products' && column === 'is_active') {
+        return value ? item.is_active !== false : item.is_active === false;
+      }
+      if (this.tableName === 'products' && column === 'is_archived') {
+        return value ? Boolean(item.is_archived) : !item.is_archived;
+      }
       if (this.tableName === 'orders' && column === 'user_id') {
         return item.user_id === value || item.user_id === 'usr_demo';
       }
@@ -458,10 +584,10 @@ class MockQueryBuilder implements PromiseLike<any> {
     return this;
   }
 
-  order(column: string, { ascending = true }: { ascending?: boolean } = {}) {
+  order(column: string, { ascending = true }: { ascending?: boolean; nullsFirst?: boolean } = {}) {
     this.orderFn = (a, b) => {
-      const valA = a[column];
-      const valB = b[column];
+      const valA = a[column] ?? '';
+      const valB = b[column] ?? '';
       if (valA < valB) return ascending ? -1 : 1;
       if (valA > valB) return ascending ? 1 : -1;
       return 0;
@@ -514,7 +640,7 @@ class MockQueryBuilder implements PromiseLike<any> {
 
     switch (this.tableName) {
       case 'products':
-        dataset = getStored<any[]>(STORAGE_KEYS.PRODUCTS, MOCK_PRODUCTS);
+        dataset = getNormalizedProducts();
         break;
       case 'categories':
         dataset = [...MOCK_CATEGORIES];
@@ -554,7 +680,7 @@ class MockQueryBuilder implements PromiseLike<any> {
         ];
         break;
       case 'inventory': {
-        const prods = getStored<any[]>(STORAGE_KEYS.PRODUCTS, MOCK_PRODUCTS);
+        const prods = getNormalizedProducts();
         dataset = prods.map((p, idx) => ({
           id: p.inventory?.id || `inv-${p.id}`,
           product_id: p.id,
@@ -712,28 +838,70 @@ class MockQueryBuilder implements PromiseLike<any> {
       }));
 
       if (this.tableName === 'products') {
-        const currentProds = getStored<any[]>(STORAGE_KEYS.PRODUCTS, MOCK_PRODUCTS);
+        const currentProds = getNormalizedProducts();
         const insertedProducts = rows.map((r) => {
           const pId = r.id || 'prod_' + Math.random().toString(36).substring(2, 9);
           const existing = currentProds.find((p) => p.id === pId);
+          const cat =
+            MOCK_CATEGORIES.find((c) => c.id === (r.category_id ?? existing?.category_id)) ||
+            existing?.category ||
+            MOCK_CATEGORIES[0];
+          const br =
+            MOCK_BRANDS.find((b) => b.id === (r.brand_id ?? existing?.brand_id)) ||
+            existing?.brand ||
+            null;
+
           if (existing) {
-            return { ...existing, ...r };
+            return {
+              ...existing,
+              ...r,
+              currency: 'RWF',
+              category: cat,
+              brand: br,
+              updated_at: new Date().toISOString(),
+            };
           }
-          const cat = MOCK_CATEGORIES.find((c) => c.id === r.category_id) || { id: r.category_id || 'cat-1', name: 'General', slug: 'general' };
-          const br = MOCK_BRANDS.find((b) => b.id === r.brand_id) || null;
+
           return {
             ...r,
             id: pId,
-            slug: r.slug || (r.name ? r.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : pId),
-            currency: r.currency || 'USD',
+            slug:
+              r.slug ||
+              (r.name
+                ? r.name
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '')
+                : pId),
+            currency: 'RWF',
             is_active: r.is_active !== undefined ? r.is_active : true,
             is_featured: r.is_featured !== undefined ? r.is_featured : false,
             is_archived: r.is_archived !== undefined ? r.is_archived : false,
             category: cat,
             brand: br,
-            images: r.images && r.images.length > 0 ? r.images : [{ id: 'img_' + pId, url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80', alt_text: r.name, is_primary: true, sort_order: 0 }],
-            inventory: { quantity_available: Number(r.quantity_available ?? 50), low_stock_threshold: 5 },
+            images:
+              r.images && r.images.length > 0
+                ? r.images
+                : [
+                    {
+                      id: 'img_' + pId,
+                      product_id: pId,
+                      url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
+                      alt_text: r.name,
+                      is_primary: true,
+                      sort_order: 0,
+                    },
+                  ],
+            inventory: {
+              id: 'inv_' + pId,
+              product_id: pId,
+              quantity_available: Number(r.quantity_available ?? 25),
+              quantity_reserved: 0,
+              low_stock_threshold: 5,
+            },
+            variants: r.variants || [],
             created_at: r.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           };
         });
 
@@ -751,13 +919,17 @@ class MockQueryBuilder implements PromiseLike<any> {
       }
 
       if (this.tableName === 'inventory') {
-        const currentProds = getStored<any[]>(STORAGE_KEYS.PRODUCTS, MOCK_PRODUCTS);
+        const currentProds = getNormalizedProducts();
         for (const inv of rows) {
           const pIdx = currentProds.findIndex((p) => p.id === inv.product_id);
           if (pIdx >= 0) {
             currentProds[pIdx].inventory = {
-              quantity_available: Number(inv.quantity_available ?? 50),
+              id: currentProds[pIdx].inventory?.id || 'inv_' + inv.product_id,
+              product_id: inv.product_id,
+              quantity_available: Number(inv.quantity_available ?? 25),
+              quantity_reserved: Number(currentProds[pIdx].inventory?.quantity_reserved ?? 0),
               low_stock_threshold: Number(inv.low_stock_threshold ?? 5),
+              updated_at: new Date().toISOString(),
             };
           }
         }
@@ -766,23 +938,64 @@ class MockQueryBuilder implements PromiseLike<any> {
       }
 
       if (this.tableName === 'product_images') {
-        const currentProds = getStored<any[]>(STORAGE_KEYS.PRODUCTS, MOCK_PRODUCTS);
+        const currentProds = getNormalizedProducts();
+        const savedImages: any[] = [];
         for (const img of rows) {
           const pIdx = currentProds.findIndex((p) => p.id === img.product_id);
+          const imgObj = {
+            id: img.id || 'img_' + Math.random().toString(36).substring(2, 9),
+            product_id: img.product_id,
+            url: img.url,
+            storage_path: img.storage_path || '',
+            alt_text: img.alt_text || currentProds[pIdx]?.name || '',
+            is_primary: Boolean(img.is_primary),
+            sort_order: img.sort_order ?? 0,
+          };
+          savedImages.push(imgObj);
           if (pIdx >= 0) {
-            const existingImages = currentProds[pIdx].images || [];
-            const imgObj = {
-              id: img.id || 'img_' + Math.random().toString(36).substring(2, 9),
-              url: img.url,
-              alt_text: img.alt_text || '',
-              is_primary: img.is_primary || existingImages.length === 0,
-              sort_order: img.sort_order || existingImages.length,
-            };
-            currentProds[pIdx].images = [...existingImages.filter((x: any) => x.id !== imgObj.id), imgObj];
+            // Remove the default placeholder image if the admin is adding a real custom image
+            const existingImages = (currentProds[pIdx].images || []).filter(
+              (x: any) => x.id !== `img_${img.product_id}` && x.id !== imgObj.id && x.url !== imgObj.url
+            );
+            if (imgObj.is_primary) {
+              existingImages.forEach((x: any) => {
+                x.is_primary = false;
+              });
+            } else if (existingImages.length === 0) {
+              imgObj.is_primary = true;
+            }
+            currentProds[pIdx].images = [...existingImages, imgObj].sort(
+              (a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+            );
           }
         }
         setStored(STORAGE_KEYS.PRODUCTS, currentProds);
-        return { data: rows[0], error: null };
+        return { data: Array.isArray(payload) ? savedImages : savedImages[0], error: null };
+      }
+
+      if (this.tableName === 'product_variants') {
+        const currentProds = getNormalizedProducts();
+        const savedVariants: any[] = [];
+        for (const v of rows) {
+          const pIdx = currentProds.findIndex((p) => p.id === v.product_id);
+          const vObj = {
+            id: v.id || 'var_' + Math.random().toString(36).substring(2, 9),
+            product_id: v.product_id,
+            name: v.name,
+            sku: v.sku,
+            price_modifier: Number(v.price_modifier ?? 0),
+            attributes: v.attributes || {},
+            is_active: v.is_active !== false,
+            created_at: new Date().toISOString(),
+          };
+          savedVariants.push(vObj);
+          if (pIdx >= 0) {
+            const existingVariants = (currentProds[pIdx].variants || []).filter((x: any) => x.id !== vObj.id);
+            currentProds[pIdx].variants = [...existingVariants, vObj];
+          }
+        }
+        setStored(STORAGE_KEYS.PRODUCTS, currentProds);
+        return { data: Array.isArray(payload) ? savedVariants : savedVariants[0], error: null };
       }
 
       if (this.tableName === 'carts') {
@@ -799,7 +1012,7 @@ class MockQueryBuilder implements PromiseLike<any> {
         if (existingIdx >= 0) {
           cart.items[existingIdx].quantity += inserted[0].quantity || 1;
         } else {
-          const prods = getStored<any[]>(STORAGE_KEYS.PRODUCTS, MOCK_PRODUCTS);
+          const prods = getNormalizedProducts();
           const prod = prods.find((p) => p.id === inserted[0].product_id) || MOCK_PRODUCTS.find((p) => p.id === inserted[0].product_id);
           cart.items.push({
             ...inserted[0],
@@ -817,6 +1030,7 @@ class MockQueryBuilder implements PromiseLike<any> {
         const orderNumber = inserted[0].order_number || `ORD-2026-${randomDigits}`;
         const newOrder = {
           ...inserted[0],
+          currency: 'RWF',
           order_number: orderNumber,
           tracking_number: inserted[0].tracking_number || `ITZ-EXP-${randomDigits}88`,
           carrier: inserted[0].carrier || 'Ituze Express Priority',
@@ -841,7 +1055,7 @@ class MockQueryBuilder implements PromiseLike<any> {
 
       if (this.tableName === 'order_items') {
         const orders = getAllOrdersWithUserDefaults();
-        const prods = getStored<any[]>(STORAGE_KEYS.PRODUCTS, MOCK_PRODUCTS);
+        const prods = getNormalizedProducts();
         const orderId = inserted[0]?.order_id;
         if (orderId) {
           const ordIdx = orders.findIndex((o) => o.id === orderId);
@@ -929,7 +1143,7 @@ class MockQueryBuilder implements PromiseLike<any> {
         return { data: this.pendingUpdate, error: null };
       }
       if (this.tableName === 'products') {
-        const currentProds = getStored<any[]>(STORAGE_KEYS.PRODUCTS, MOCK_PRODUCTS);
+        const currentProds = getNormalizedProducts();
         const updatedProds = currentProds.map((p) => {
           let match = true;
           for (const f of this.filters) {
@@ -938,9 +1152,59 @@ class MockQueryBuilder implements PromiseLike<any> {
               break;
             }
           }
-          return match ? { ...p, ...this.pendingUpdate } : p;
+          if (!match) return p;
+          const nextCatId = this.pendingUpdate.category_id !== undefined ? this.pendingUpdate.category_id : p.category_id;
+          const nextBrandId = this.pendingUpdate.brand_id !== undefined ? this.pendingUpdate.brand_id : p.brand_id;
+          const cat = MOCK_CATEGORIES.find((c) => c.id === nextCatId) || p.category || MOCK_CATEGORIES[0];
+          const br = MOCK_BRANDS.find((b) => b.id === nextBrandId) || p.brand || null;
+          return {
+            ...p,
+            ...this.pendingUpdate,
+            currency: 'RWF',
+            category: cat,
+            brand: br,
+            updated_at: new Date().toISOString(),
+          };
         });
         setStored(STORAGE_KEYS.PRODUCTS, updatedProds);
+        return { data: this.pendingUpdate, error: null };
+      }
+      if (this.tableName === 'product_images') {
+        const currentProds = getNormalizedProducts();
+        for (const p of currentProds) {
+          if (Array.isArray(p.images)) {
+            p.images = p.images.map((img: any) => {
+              let match = true;
+              for (const f of this.filters) {
+                if (!f(img)) {
+                  match = false;
+                  break;
+                }
+              }
+              return match ? { ...img, ...this.pendingUpdate } : img;
+            });
+          }
+        }
+        setStored(STORAGE_KEYS.PRODUCTS, currentProds);
+        return { data: this.pendingUpdate, error: null };
+      }
+      if (this.tableName === 'product_variants') {
+        const currentProds = getNormalizedProducts();
+        for (const p of currentProds) {
+          if (Array.isArray(p.variants)) {
+            p.variants = p.variants.map((v: any) => {
+              let match = true;
+              for (const f of this.filters) {
+                if (!f(v)) {
+                  match = false;
+                  break;
+                }
+              }
+              return match ? { ...v, ...this.pendingUpdate } : v;
+            });
+          }
+        }
+        setStored(STORAGE_KEYS.PRODUCTS, currentProds);
         return { data: this.pendingUpdate, error: null };
       }
       if (this.tableName === 'cart_items') {
@@ -963,7 +1227,7 @@ class MockQueryBuilder implements PromiseLike<any> {
 
     if (this.pendingDelete) {
       if (this.tableName === 'products') {
-        const currentProds = getStored<any[]>(STORAGE_KEYS.PRODUCTS, MOCK_PRODUCTS);
+        const currentProds = getNormalizedProducts();
         const filtered = currentProds.filter((p) => {
           for (const f of this.filters) {
             if (f(p)) return false;
@@ -971,6 +1235,21 @@ class MockQueryBuilder implements PromiseLike<any> {
           return true;
         });
         setStored(STORAGE_KEYS.PRODUCTS, filtered);
+        return { data: null, error: null };
+      }
+      if (this.tableName === 'product_images') {
+        const currentProds = getNormalizedProducts();
+        for (const p of currentProds) {
+          if (Array.isArray(p.images)) {
+            p.images = p.images.filter((img: any) => {
+              for (const f of this.filters) {
+                if (f(img)) return false;
+              }
+              return true;
+            });
+          }
+        }
+        setStored(STORAGE_KEYS.PRODUCTS, currentProds);
         return { data: null, error: null };
       }
       if (this.tableName === 'cart_items') {

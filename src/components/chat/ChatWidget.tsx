@@ -25,11 +25,14 @@ import {
   Info,
   ShoppingBag,
   Zap,
+  Mail,
+  MessageCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useT } from '@/contexts/LanguageContext';
 import { sendChatMessage } from '@/lib/gemini';
 import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS, formatCurrency } from '@/utils/formatters';
+import { BrandIcon } from '@/components/shared/BrandLogo';
 import type { ChatMessage } from '@/types/chat';
 import '@/styles/chatbot.css';
 
@@ -39,7 +42,7 @@ function stripLeadingEmoji(str: string): string {
 }
 
 // Inline markdown parser for **bold**, *italic*, `code`, and [links](url)
-function renderInlineContent(text: string): React.ReactNode[] {
+function renderInlineContent(text: string, onNavigate?: () => void): React.ReactNode[] {
   const tokenRegex = /(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g;
   const parts = text.split(tokenRegex);
 
@@ -50,14 +53,32 @@ function renderInlineContent(text: string): React.ReactNode[] {
     const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (linkMatch) {
       const [, label, href] = linkMatch;
-      const isInternal = href.startsWith('/') || href.includes('localhost:5173') || href.includes('ituze.store') || href.includes('tunga.store');
+      const isInternal =
+        href.startsWith('/') ||
+        href.includes('localhost:5173') ||
+        href.includes('localhost:3000') ||
+        href.includes('ituze.store') ||
+        href.includes('tunga.store');
       if (isInternal) {
         const localPath = href.replace(/^https?:\/\/[^/]+/, '');
         return (
-          <Link key={idx} to={localPath || '/'} className="chatbot-inline-link">
+          <Link
+            key={idx}
+            to={localPath || '/'}
+            className="chatbot-inline-link"
+            onClick={() => onNavigate?.()}
+          >
             <span>{label}</span>
             <ArrowRight size={10} className="chatbot-inline-link-icon" />
           </Link>
+        );
+      }
+      if (href.startsWith('mailto:')) {
+        return (
+          <a key={idx} href={href} className="chatbot-inline-link">
+            <Mail size={11} className="chatbot-inline-link-icon" />
+            <span>{label}</span>
+          </a>
         );
       }
       return (
@@ -468,6 +489,7 @@ export function ChatWidget() {
         timestamp: new Date().toISOString(),
         products: response.matchedProducts,
         orders: response.matchedOrders,
+        contactActions: response.contactActions,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -540,7 +562,7 @@ export function ChatWidget() {
                 <div className="chatbot-callout-icon-wrap">
                   <Info size={13} />
                 </div>
-                <div className="chatbot-callout-text">{renderInlineContent(block.content)}</div>
+                <div className="chatbot-callout-text">{renderInlineContent(block.content, () => setIsOpen(false))}</div>
               </div>
             );
           }
@@ -553,7 +575,7 @@ export function ChatWidget() {
                 <div className={`chatbot-bar-icon-wrap icon-${block.iconType || 'sparkles'}`}>
                   <BlockIcon type={block.iconType} />
                 </div>
-                <div className="chatbot-bar-content">{renderInlineContent(block.content)}</div>
+                <div className="chatbot-bar-content">{renderInlineContent(block.content, () => setIsOpen(false))}</div>
               </div>
             );
           }
@@ -563,14 +585,14 @@ export function ChatWidget() {
             return (
               <div key={idx} className="chatbot-bar-card numbered">
                 <span className="chatbot-number-pill">{block.number}</span>
-                <div className="chatbot-bar-content">{renderInlineContent(block.content)}</div>
+                <div className="chatbot-bar-content">{renderInlineContent(block.content, () => setIsOpen(false))}</div>
               </div>
             );
           }
 
           return (
             <p key={idx} className="chatbot-paragraph">
-              {renderInlineContent(block.content)}
+              {renderInlineContent(block.content, () => setIsOpen(false))}
             </p>
           );
         })}
@@ -624,12 +646,8 @@ export function ChatWidget() {
           {/* Header */}
           <div className="chatbot-header">
             <div className="chatbot-header-left">
-              <div className="chatbot-avatar-wrap" style={{ padding: 0, overflow: 'visible' }}>
-                <img
-                  src="/assets/aistudio/ituze-favicon-1_10b6b826.svg"
-                  alt="ITUZE AI"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit', display: 'block' }}
-                />
+              <div className="chatbot-avatar-wrap" style={{ padding: 0, overflow: 'visible', background: 'transparent' }}>
+                <BrandIcon size={40} />
                 <span className="chatbot-avatar-badge" />
               </div>
               <div className="chatbot-header-info">
@@ -735,7 +753,7 @@ export function ChatWidget() {
                   )}
                   {renderFormattedText(msg.content, msg.role === 'assistant' ? 'assistant' : 'user')}
 
-                  {/* Attached Product Cards */}
+                  {/* Attached Product Cards with Images & Direct Store Links */}
                   {msg.products && msg.products.length > 0 && (
                     <div className="chatbot-cards-list">
                       {msg.products.map((prod) => (
@@ -753,6 +771,22 @@ export function ChatWidget() {
                           />
                           <div className="chatbot-product-info">
                             <div className="chatbot-product-title">{prod.name}</div>
+                            {prod.short_description && (
+                              <div
+                                style={{
+                                  fontSize: '0.7rem',
+                                  color: 'var(--slate-500)',
+                                  lineHeight: 1.3,
+                                  marginBottom: 4,
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                {prod.short_description}
+                              </div>
+                            )}
                             <div className="chatbot-product-meta">
                               <span className="chatbot-product-price">
                                 {formatCurrency(prod.sale_price ?? prod.base_price, prod.currency)}
@@ -775,6 +809,83 @@ export function ChatWidget() {
                           </div>
                         </Link>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Direct Contact Owner Buttons (WhatsApp & Email) */}
+                  {msg.contactActions && (
+                    <div
+                      className="chatbot-cards-list"
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 8,
+                        marginTop: 10,
+                      }}
+                    >
+                      <a
+                        href={msg.contactActions.whatsappUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          borderRadius: 12,
+                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          color: '#ffffff',
+                          textDecoration: 'none',
+                          fontWeight: 600,
+                          fontSize: '0.8rem',
+                          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                        }}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <MessageCircle size={16} />
+                          <span>
+                            {lang === 'fr'
+                              ? 'Discuter sur WhatsApp avec le Propriétaire'
+                              : lang === 'rw'
+                              ? "Vugana na Nyir'iduka kuri WhatsApp"
+                              : lang === 'sw'
+                              ? 'Ongea na Mmiliki kupitia WhatsApp'
+                              : 'Chat Directly on WhatsApp'}
+                          </span>
+                        </span>
+                        <ExternalLink size={13} />
+                      </a>
+
+                      <a
+                        href={msg.contactActions.emailUrl}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          borderRadius: 12,
+                          background: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
+                          color: '#ffffff',
+                          textDecoration: 'none',
+                          fontWeight: 600,
+                          fontSize: '0.8rem',
+                          boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)',
+                        }}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Mail size={16} />
+                          <span>
+                            {lang === 'fr'
+                              ? 'Envoyer un Email Direct'
+                              : lang === 'rw'
+                              ? "Ohereza Email kuri Nyir'iduka"
+                              : lang === 'sw'
+                              ? 'Tuma Barua Pepe Moja kwa Moja'
+                              : 'Send Direct Email to Owner'}
+                          </span>
+                        </span>
+                        <ArrowRight size={13} />
+                      </a>
                     </div>
                   )}
 

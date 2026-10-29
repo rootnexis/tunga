@@ -393,19 +393,32 @@ function getNormalizedProducts(): any[] {
       }
     }
 
-    // Ensure images array is populated
+    // Ensure images array is populated and seed products have their full multi-angle gallery
     if (!Array.isArray(nextP.images) || nextP.images.length === 0) {
-      nextP.images = [
-        {
-          id: 'img_' + nextP.id,
-          product_id: nextP.id,
-          url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
-          alt_text: nextP.name || 'Product image',
-          is_primary: true,
-          sort_order: 0,
-        },
-      ];
+      nextP.images = seedMatch?.images
+        ? [...seedMatch.images]
+        : [
+            {
+              id: 'img_' + nextP.id,
+              product_id: nextP.id,
+              url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
+              alt_text: nextP.name || 'Product image',
+              is_primary: true,
+              sort_order: 0,
+            },
+          ];
       changed = true;
+    } else if (seedMatch?.images && nextP.images.length < seedMatch.images.length) {
+      // Upgrade seed product to include all multi-angle photos while keeping any custom-added photos
+      const existingUrls = new Set(nextP.images.map((im: any) => im.url));
+      const missingSeedImgs = seedMatch.images.filter((sim) => !existingUrls.has(sim.url));
+      if (missingSeedImgs.length > 0) {
+        nextP.images = [...nextP.images, ...missingSeedImgs].map((im: any, idx: number) => ({
+          ...im,
+          sort_order: idx,
+        }));
+        changed = true;
+      }
     }
 
     // Ensure inventory object is populated
@@ -422,6 +435,14 @@ function getNormalizedProducts(): any[] {
 
     return nextP;
   });
+
+  // Ensure any new seed products in MOCK_PRODUCTS are also present
+  for (const mp of MOCK_PRODUCTS) {
+    if (!normalized.some((p) => p.id === mp.id || p.slug === mp.slug)) {
+      normalized.push({ ...mp });
+      changed = true;
+    }
+  }
 
   if (changed) {
     setStored(STORAGE_KEYS.PRODUCTS, normalized);
@@ -1618,7 +1639,69 @@ const hybridAuth = {
   },
 };
 
+const uploadedBlobsMap = new Map<string, string>();
+
+function fileToDataUrl(file: File | Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
+
+const hybridStorage = {
+  from(bucket: string) {
+    return {
+      async upload(path: string, file: File | Blob, options?: any) {
+        if (liveClient?.storage) {
+          try {
+            const res = await liveClient.storage.from(bucket).upload(path, file, options);
+            if (!res.error) return res;
+          } catch {
+            // Fall through to local data URL storage
+          }
+        }
+        try {
+          const dataUrl = await fileToDataUrl(file);
+          uploadedBlobsMap.set(path, dataUrl);
+          return { data: { path }, error: null };
+        } catch (e: any) {
+          return { data: null, error: { message: e?.message || 'Failed to read image file' } };
+        }
+      },
+      getPublicUrl(path: string) {
+        const localUrl = uploadedBlobsMap.get(path);
+        if (localUrl) {
+          return { data: { publicUrl: localUrl } };
+        }
+        if (liveClient?.storage) {
+          try {
+            return liveClient.storage.from(bucket).getPublicUrl(path);
+          } catch {
+            // Fallback
+          }
+        }
+        return { data: { publicUrl: path } };
+      },
+      async remove(paths: string[]) {
+        paths.forEach((p) => uploadedBlobsMap.delete(p));
+        if (liveClient?.storage) {
+          try {
+            await liveClient.storage.from(bucket).remove(paths);
+          } catch {
+            // Ignore
+          }
+        }
+        return { data: paths, error: null };
+      },
+    };
+  },
+};
+
 export const supabase: any = {
   auth: hybridAuth,
   from: (table: string) => new MockQueryBuilder(table),
+  storage: hybridStorage,
 };
+

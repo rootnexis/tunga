@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
-  ArrowLeft, Plus, Trash2, GripVertical, Star, Upload, X, Loader2,
+  ArrowLeft, Plus, Trash2, GripVertical, Star, Upload, X, Loader2, Maximize2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { queryClient } from '@/lib/queryClient';
@@ -9,6 +9,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { useT } from '@/contexts/LanguageContext';
 import { PageSeo } from '@/components/shared/PageSeo';
 import { Spinner } from '@/components/shared/Spinner';
+import { ImageLightbox } from '@/components/shared/ImageLightbox';
 import { slugify } from '@/utils/formatters';
 import type { Category, Brand } from '@/types';
 
@@ -93,6 +94,7 @@ export default function AdminProductFormPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [slugManual, setSlugManual] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -356,6 +358,17 @@ export default function AdminProductFormPage() {
     dragIdx.current = null;
   };
 
+  const moveImage = (fromIdx: number, direction: -1 | 1) => {
+    const toIdx = fromIdx + direction;
+    if (toIdx < 0 || toIdx >= images.length) return;
+    setImages(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return next.map((x, idx) => ({ ...x, sort_order: idx }));
+    });
+  };
+
   if (isLoading) return <Spinner fullPage />;
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -459,7 +472,20 @@ export default function AdminProductFormPage() {
 
             {/* Images */}
             <div className="card">
-              <h2 className="card-section-title">{tf.images}</h2>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
+                <h2 className="card-section-title" style={{ marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }}>
+                  {tf.images} ({images.filter(x => !x._uploading).length})
+                </h2>
+                {images.filter(x => !x._uploading).length > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setLightboxIdx(0)}
+                  >
+                    <Maximize2 size={13} /> Preview Gallery Full Screen
+                  </button>
+                )}
+              </div>
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-4)' }}>
                 {tf.imagesDragHint}
               </p>
@@ -509,12 +535,46 @@ export default function AdminProductFormPage() {
                       {img._uploading ? (
                         <div className="image-thumb-loading"><Loader2 size={20} className="spin" /></div>
                       ) : (
-                        <img src={img.url} alt={img.alt_text || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img
+                          src={img.url}
+                          alt={img.alt_text || ''}
+                          referrerPolicy="no-referrer"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onClick={() => setLightboxIdx(i)}
+                        />
                       )}
+                      <span className={`image-thumb-order-badge${img.is_primary ? ' primary' : ''}`}>
+                        {img.is_primary ? 'Primary' : `#${i + 1}`}
+                      </span>
                       <div className="image-thumb-actions">
                         <button type="button" className="image-thumb-btn" onClick={() => setPrimary(img._key)} title={tf.setPrimary}>
                           <Star size={12} fill={img.is_primary ? 'currentColor' : 'none'} />
                         </button>
+                        <button type="button" className="image-thumb-btn" onClick={() => setLightboxIdx(i)} title="Full Screen">
+                          <Maximize2 size={11} />
+                        </button>
+                        {images.length > 1 && (
+                          <>
+                            <button
+                              type="button"
+                              className="image-thumb-btn"
+                              onClick={() => moveImage(i, -1)}
+                              disabled={i === 0}
+                              title="Move earlier"
+                            >
+                              <ChevronLeft size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              className="image-thumb-btn"
+                              onClick={() => moveImage(i, 1)}
+                              disabled={i === images.length - 1}
+                              title="Move later"
+                            >
+                              <ChevronRight size={12} />
+                            </button>
+                          </>
+                        )}
                         <GripVertical size={12} style={{ color: 'white', opacity: 0.7 }} />
                         <button type="button" className="image-thumb-btn image-thumb-delete" onClick={() => removeImage(img)} title={tf.removeImage}>
                           <X size={12} />
@@ -687,6 +747,14 @@ export default function AdminProductFormPage() {
 
         </div>
       </form>
+
+      <ImageLightbox
+        isOpen={lightboxIdx !== null}
+        onClose={() => setLightboxIdx(null)}
+        images={images.filter(x => !x._uploading && x.url)}
+        initialIndex={lightboxIdx ?? 0}
+        productName={form.name || tf.newProduct}
+      />
     </>
   );
 }
